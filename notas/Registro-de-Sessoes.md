@@ -72,3 +72,28 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - `.claude/` no .gitignore; `scripts/ci.sh` legado removido.
 
 **Atenção:** se houver sessão do Claude Code aberta seguindo o roadmap antigo, encerrar antes de continuar — os docs em main agora descrevem a v2.
+
+---
+
+## 2026-07-19 (4) — Fase 0 (v2): push do repo + fundação Supabase/Next.js
+
+**Objetivo:** publicar `main`/`legacy-local` no GitHub e executar a Fase 0 da v2 (Supabase + Next.js + Vercel).
+
+**Realizado:**
+- Push de `main` e `legacy-local` para `origin` (GitHub).
+- Supabase: org já estava no limite de 2 projetos free (`rachaconta`, `zerosheet-judotracker`). Pedro decidiu reaproveitar o projeto `rachaconta` com um **schema dedicado `healthia`**, isolado de `public` — decisão registrada em [ADR-002](ADR/ADR-002-schema-compartilhado-supabase.md).
+- 3 migrations aplicadas no projeto `rachaconta` (schema `healthia`): schema completo do DATA_MODEL.md (11 tabelas) + RLS + triggers de proteção append-only (`raw_records`, `health_events`); hardening pós-security-advisor (`to authenticated` explícito, `search_path` fixo nas funções trigger); restrição adicional para excluir sessões anônimas (o projeto compartilhado tem ~95 usuários anônimos de outro app — `auth.role() = 'authenticated'` sozinho os incluiria). Migrations versionadas em `web/supabase/migrations/`.
+- Scaffold `web/`: Next.js 16 (App Router, Turbopack) + TS + Tailwind v4 + vitest + `@supabase/ssr`. Estrutura de pastas do monorepo (`domain/`, `repositories/`, `engines/*`, `modules/`, `normalization/`) criada.
+- `domain/`: schemas zod para `raw_records` e `health_events` (+ testes), interface `EventRepository`.
+- `repositories/`: implementação Supabase de `EventRepository`; clients browser/server via `@supabase/ssr`, `db.schema: "healthia"`; `databaseTypes.ts` escrito à mão (schema `healthia` não é enxergado por `generate_typescript_types` até ser exposto na Data API — ver Pendências).
+- Auth: `proxy.ts` (renomeado de `middleware.ts` — convenção nova do Next.js 16) protege todas as rotas exceto `/login`; página de login (só `signInWithPassword`, sem cadastro) testada no browser contra o Supabase real — fluxo de erro ("Credenciais inválidas") confirmado ponta a ponta.
+- PWA base: manifest, ícone SVG, service worker mínimo (installability, sem estratégia de cache ainda).
+- `npm test`, `npm run typecheck`, `npm run build` verdes.
+- Deploy Vercel: projeto `healthia` criado no time `pedroheribeiro2021's projects`, mas `deploy_to_vercel` retornou `403 forbidden` tanto para produção quanto para preview — permissão da conta/integração, não resolvível por ferramenta. App não está no ar ainda.
+
+**Decisões:**
+- Ver ADR-002 (schema compartilhado) e o achado de segurança sobre auth anônimo compartilhado.
+- `NEXT_PUBLIC_*` só funciona no bundle do client com acesso estático (`process.env.NEXT_PUBLIC_X`), não dinâmico (`process.env[nome]`) — bug real encontrado e corrigido durante o teste no browser (`web/src/repositories/supabase/env.ts`).
+- Node local é 20.20.2; `@supabase/supabase-js` recentes pedem Node ≥22 (warning, não erro). `engines` no `package.json` já pede ≥22 para alinhar com o build da Vercel; upgrade do Node local fica como melhoria, não bloqueio.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — a Fase 0 só fecha quando Pedro liberar a permissão de deploy na Vercel, conectar o repo Git ao projeto, configurar as env vars (incluindo `SUPABASE_SERVICE_ROLE_KEY`, que não foi buscado por ser secreto), expor o schema `healthia` na Data API do Supabase e criar sua conta real de auth.

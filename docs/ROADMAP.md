@@ -3,13 +3,16 @@
 Fases pequenas, cada uma termina com algo funcionando de ponta a ponta **em produção** (Vercel).
 Dados manuais e dashboard vêm antes do sync automático — valor desde a primeira semana.
 
-## Fase 0 — Fundação
+## Fase 0 — Fundação (parcialmente concluída em 2026-07-19, ver notas/Registro-de-Sessoes.md)
 - Criar projeto Supabase (free tier) + projeto Vercel ligado ao repo.
-- Scaffold `web/` (Next.js + TS + Tailwind + vitest + PWA base) com deploy funcionando.
-- Migration 001 (schema completo do DATA_MODEL.md) + RLS; Supabase Auth com a conta do Pedro, cadastro desabilitado; middleware protegendo tudo.
-- Repositórios (interfaces em `domain/` + implementação Supabase).
+  - Desvio: org Supabase já estava no limite de 2 projetos free → schema dedicado `healthia` dentro do projeto `rachaconta` (ADR-002), não um projeto novo.
+  - Projeto Vercel `healthia` criado, mas deploy bloqueado por permissão (`403`) — ver Pendências.
+- Scaffold `web/` (Next.js + TS + Tailwind + vitest + PWA base) com deploy funcionando. ✅ scaffold local completo (`npm test`, `npm run typecheck`, `npm run build` verdes); deploy em produção pendente da liberação de permissão na Vercel.
+- Migration 001 (schema completo do DATA_MODEL.md) + RLS; Supabase Auth com a conta do Pedro, cadastro desabilitado; middleware (proxy.ts) protegendo tudo. ✅ schema + RLS + triggers append-only aplicados; proxy funcionando (testado no browser); conta do Pedro ainda não existe no projeto — ver Pendências.
+- Repositórios (interfaces em `domain/` + implementação Supabase). ✅ `EventRepository` (raw_records + health_events).
 
 **Pronto quando:** app no ar na URL da Vercel, login do Pedro funciona, schema aplicado, `npm test` e `npm run typecheck` verdes.
+**Status:** schema aplicado ✅, testes/typecheck verdes ✅, login testado localmente contra o Supabase real ✅ — falta o app estar no ar em produção (bloqueado por permissão Vercel) e a conta real do Pedro existir. Ver `notas/Pendencias.md`.
 
 ## Fase 1 — Ingestão manual + fonte da verdade
 - `POST /api/v1/events/manual` (peso, hidratação, refeição simples, nota).
