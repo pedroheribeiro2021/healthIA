@@ -36,6 +36,12 @@ Responsabilidade única: mover dados brutos do Health Connect para a nuvem. **Ze
 - Payload enviado **bruto** — normalização é do servidor (permite reprocessar histórico quando os normalizers evoluírem).
 - Auth: login único com a conta do Pedro (Supabase Auth); refresh token guardado com `expo-secure-store`.
 
+**Limitações conhecidas do Health Connect (considerar na Fase 2):**
+- Retenção de ~30 dias de histórico → instalar o sync-app o quanto antes; cada mês sem ele é histórico perdido para correlações.
+- Sem push em tempo real: sync periódico em background (limites do Android) + ao abrir o app. Suficiente para consulta matinal.
+- Métricas proprietárias da Samsung (ex.: energy score) não são expostas; as necessárias ao Analytics (sono com estágios, HRV, FC, treinos, peso, composição) são.
+- Pré-requisito no aparelho: ativar Samsung Health → Health Connect.
+
 ### 2. Protocolo de sync
 
 ```
