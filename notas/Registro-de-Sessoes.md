@@ -46,13 +46,29 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 ---
 
+## 2026-07-19 (2) — Pivô de arquitetura: local → nuvem
+
+**Objetivo:** revisar a arquitetura após questionamento do Pedro sobre acesso pelo celular.
+
+**Realizado:**
+- Discutidas 3 opções (nuvem, Tailscale, só local). Pedro escolheu **nuvem: Vercel + Supabase**, padrão dos seus outros apps.
+- Decisão registrada em [ADR-001](ADR/ADR-001-migracao-para-nuvem.md).
+- Documentação inteira reescrita para v2: `CLAUDE.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md` (Postgres/RLS), `docs/ENGINES.md` (interfaces TS), `docs/ROADMAP.md` (Fase 0 = Supabase + Vercel + deploy).
+- Pendências da Fase 0 atualizadas.
+
+**Decisões:** ver ADR-001. Destaques: analytics em TS puro (sem Python), Gemini free tier como IA default, PWA mobile-first como interface principal, princípio "offline first" revisado para "acessível em qualquer lugar, resiliente a offline".
+
+**Próximos passos:** Fase 0 no Claude Code — criar projeto Supabase, scaffold Next.js, migration 001, auth e deploy.
+
+---
+
 ## 2026-07-19 (3) — Arquivamento da stack local
 
 **Contexto:** ao commitar a v2, descobri que uma sessão do Claude Code já havia implementado a Fase 0 na stack local (server/ FastAPI, dashboard/ Vite, sync-app/) e tinha Fase 1 parcial não commitada. Pedro confirmou manter o pivô para nuvem.
 
 **Realizado:**
 - Trabalho pendente da Fase 1 commitado na branch **`legacy-local`** (junto com toda a stack Python) — nada foi perdido.
-- `main` limpa: só docs + notas, pronta para a Fase 0 da v2 (Next.js + Supabase).
-- `.claude/` (settings locais do Claude Code) adicionado ao .gitignore.
+- `main` limpa: só docs + notas na arquitetura v2 (Next.js + Supabase), pronta para a Fase 0 da v2.
+- `.claude/` no .gitignore; `scripts/ci.sh` legado removido.
 
-**Atenção:** se houver sessão do Claude Code aberta seguindo o roadmap antigo, encerrar antes de continuar — os docs em main agora descrevem a arquitetura v2.
+**Atenção:** se houver sessão do Claude Code aberta seguindo o roadmap antigo, encerrar antes de continuar — os docs em main agora descrevem a v2.

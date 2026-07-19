@@ -18,13 +18,14 @@ Formato: `tipo(escopo opcional): descrição no imperativo, minúscula, sem pont
 | `style` | formatação, sem mudança de lógica |
 | `revert` | reversão de commit |
 
-Escopos do projeto: `server`, `dashboard`, `sync-app`, `analytics`, `insights`, `recommendations`, `ai`, `db`, `api`, `normalization`, `docs`.
+Escopos do projeto: `web`, `sync-app`, `analytics`, `insights`, `recommendations`, `ai`, `db`, `api`, `normalization`, `docs`.
 
 Exemplos:
 
 ```
 feat(analytics): implementa recovery score v1
 fix(sync-app): corrige dedup de sessões de sono no reenvio
+feat(web): adiciona módulo de sono ao dashboard
 docs(roadmap): marca fase 0 como concluída
 chore(db): adiciona migration 003 de metric_snapshots
 ```
