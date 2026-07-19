@@ -1,174 +1,174 @@
-# HealthAI — Modelo de Dados
+# HealthIA — Modelo de Dados (Supabase/Postgres)
 
 ## Princípios
 
-1. **Duas camadas**: bruto (`raw_records`, imutável, como veio da origem) e normalizado (`health_events`, modelo interno único). Tudo o mais é derivável.
-2. **Append-only** nas duas camadas. Correção = novo evento que supersede o anterior, nunca UPDATE/DELETE.
-3. **SI + UTC** em tudo que é armazenado. Timezone (`America/Sao_Paulo`) só na apresentação e no corte de "dia".
-4. **Recalculável**: `metric_snapshots`, `insights` e `recommendations` podem ser apagados e regenerados a qualquer momento a partir de `health_events`.
+1. **Duas camadas**: bruto (`raw_records`, imutável) e normalizado (`health_events`, modelo interno único). Tudo o mais é derivável.
+2. **Append-only** nas duas camadas. Correção = novo evento que supersede o anterior (`superseded_by`), nunca UPDATE/DELETE.
+3. **SI + UTC** (`timestamptz`). Timezone `America/Sao_Paulo` só na apresentação e no corte de "dia".
+4. **Recalculável**: `metric_snapshots`, `insights`, `recommendations` e `daily_summary` podem ser truncados e regenerados a partir de `health_events`.
+5. **RLS em todas as tabelas**: acesso apenas ao usuário autenticado; `anon` sem acesso.
 
 ## Camada 1 — Bruto
 
 ```sql
-CREATE TABLE raw_records (
-    id              INTEGER PRIMARY KEY,
-    source          TEXT NOT NULL,             -- 'health_connect' | 'manual' | 'bioimpedance' | 'lab' | 'recipe_import'
-    record_type     TEXT NOT NULL,             -- tipo na origem, ex.: 'SleepSession', 'ExerciseSession'
-    external_id     TEXT,                      -- id do registro na origem (quando existir)
-    payload         TEXT NOT NULL,             -- JSON bruto, exatamente como recebido
-    payload_hash    TEXT NOT NULL,             -- sha256 do payload canônico (dedup)
-    device_id       TEXT,
-    received_at     TEXT NOT NULL,             -- UTC ISO 8601
-    norm_status     TEXT NOT NULL DEFAULT 'pending',  -- 'pending' | 'done' | 'error'
-    norm_error      TEXT,
-    UNIQUE (source, external_id),
-    UNIQUE (payload_hash)
+create table raw_records (
+    id            bigint generated always as identity primary key,
+    source        text not null,          -- 'health_connect' | 'manual' | 'bioimpedance' | 'lab' | 'recipe_import'
+    record_type   text not null,          -- tipo na origem, ex.: 'SleepSession'
+    external_id   text,                   -- id do registro na origem
+    payload       jsonb not null,         -- bruto, exatamente como recebido
+    payload_hash  text not null,          -- sha256 do payload canônico
+    device_id     text,
+    received_at   timestamptz not null default now(),
+    norm_status   text not null default 'pending',  -- 'pending' | 'done' | 'error'
+    norm_error    text,
+    unique nulls not distinct (source, external_id),
+    unique (payload_hash)
 );
 ```
 
-Dedup na ingestão: conflito em qualquer das duas UNIQUEs ⇒ registro contado como `duplicate`, ignorado silenciosamente.
+Dedup na ingestão: conflito em qualquer unique ⇒ contado como `duplicate`, ignorado (upsert `on conflict do nothing`).
 
 ## Camada 2 — Eventos normalizados (fonte da verdade)
 
-Modelo de evento único para tudo. Campos comuns fortes + detalhe tipado em JSON validado por Pydantic.
-
 ```sql
-CREATE TABLE health_events (
-    id              INTEGER PRIMARY KEY,
-    event_type      TEXT NOT NULL,     -- ver taxonomia abaixo
-    start_time      TEXT NOT NULL,     -- UTC ISO 8601
-    end_time        TEXT,              -- NULL para medições pontuais
-    value           REAL,              -- valor principal em unidade SI (quando escalar)
-    unit            TEXT,              -- 'kg' | 'ms' | 'bpm' | 's' | 'kcal' | 'g' | 'l' | ...
-    detail          TEXT,              -- JSON tipado por event_type (schema Pydantic em domain/)
-    source          TEXT NOT NULL,
-    raw_record_id   INTEGER REFERENCES raw_records(id),
-    superseded_by   INTEGER REFERENCES health_events(id),  -- correção/versão nova; NULL = vigente
-    created_at      TEXT NOT NULL
+create table health_events (
+    id             bigint generated always as identity primary key,
+    event_type     text not null,          -- taxonomia abaixo
+    start_time     timestamptz not null,
+    end_time       timestamptz,            -- null p/ medições pontuais
+    value          double precision,       -- valor principal em SI (quando escalar)
+    unit           text,                   -- 'kg' | 'ms' | 'bpm' | 's' | 'kcal' | 'g' | 'l' | ...
+    detail         jsonb,                  -- tipado por event_type (schema zod em domain/)
+    source         text not null,
+    raw_record_id  bigint references raw_records(id),
+    superseded_by  bigint references health_events(id),  -- null = vigente
+    created_at     timestamptz not null default now()
 );
-CREATE INDEX idx_events_type_time ON health_events (event_type, start_time);
+create index idx_events_type_time on health_events (event_type, start_time);
 ```
 
 ### Taxonomia de `event_type`
 
 | event_type | value/unit | detail (resumo) |
 |---|---|---|
-| `sleep_session` | duração total, s | estágios (deep/rem/light/awake em s), horário de dormir/acordar |
+| `sleep_session` | duração total, s | estágios (deep/rem/light/awake em s), dormir/acordar |
 | `workout` | duração, s | `sport` ('soccer'\|'gym'\|'run'\|...), distância m, kcal, FC média/máx, zonas |
 | `heart_rate` | bpm | contexto ('rest'\|'exercise'\|'continuous') |
 | `resting_heart_rate` | bpm | — |
-| `hrv` | rmssd, ms | método de medição |
+| `hrv` | rmssd, ms | método |
 | `steps` | contagem/dia | — |
 | `weight` | kg | — |
-| `body_composition` | peso, kg | origem ('watch'\|'clinical_bia'), massa magra/gorda kg, % gordura, água, massa óssea, taxa metabólica |
+| `body_composition` | peso, kg | origem ('watch'\|'clinical_bia'), massa magra/gorda, % gordura, água, TMB |
 | `hydration` | l | — |
-| `meal` | kcal | tipo de refeição, itens, macros (proteína/carbo/gordura g), micros, `recipe_id` opcional |
-| `lab_result` | valor do marcador | `marker` ('glucose'\|'vitamin_d'\|'testosterone'\|'ferritin'\|'crp'\|'hdl'\|...), unidade original, faixa de referência do laudo |
-| `note` | — | anotação livre (contexto qualitativo: lesão, viagem, estresse) |
+| `meal` | kcal | tipo, itens, macros (g), micros, `recipe_id` opcional |
+| `lab_result` | valor | `marker` ('glucose'\|'vitamin_d'\|'testosterone'\|'ferritin'\|'crp'\|...), unidade original, faixa de referência |
+| `note` | — | anotação livre (lesão, viagem, estresse) |
 
-Regra de leitura: consultas sempre filtram `superseded_by IS NULL`.
+Leitura sempre com `superseded_by is null`.
 
-## Tabelas de domínio (não-eventos)
+## Tabelas de domínio
 
 ```sql
-CREATE TABLE recipes (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    servings REAL NOT NULL DEFAULT 1,
-    instructions TEXT,
-    source TEXT NOT NULL DEFAULT 'manual',   -- 'manual' | 'ai_suggested'
-    created_at TEXT NOT NULL,
-    archived INTEGER NOT NULL DEFAULT 0
+create table recipes (
+    id bigint generated always as identity primary key,
+    name text not null,
+    servings numeric not null default 1,
+    instructions text,
+    source text not null default 'manual',     -- 'manual' | 'ai_suggested'
+    archived boolean not null default false,
+    created_at timestamptz not null default now()
 );
 
-CREATE TABLE recipe_ingredients (
-    id INTEGER PRIMARY KEY,
-    recipe_id INTEGER NOT NULL REFERENCES recipes(id),
-    food_name TEXT NOT NULL,
-    quantity REAL NOT NULL,
-    unit TEXT NOT NULL,
-    -- macros por quantidade informada (preenchidos na criação, via tabela local de alimentos TACO/TBCA)
-    kcal REAL, protein_g REAL, carbs_g REAL, fat_g REAL, micros TEXT  -- micros = JSON
+create table recipe_ingredients (
+    id bigint generated always as identity primary key,
+    recipe_id bigint not null references recipes(id),
+    food_name text not null,
+    quantity numeric not null,
+    unit text not null,
+    kcal numeric, protein_g numeric, carbs_g numeric, fat_g numeric,
+    micros jsonb
 );
 
-CREATE TABLE foods (               -- base nutricional local (importar TACO/TBCA na Fase 5)
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    per_100g TEXT NOT NULL          -- JSON: kcal, macros, micros
+create table foods (                           -- base nutricional (TACO/TBCA, Fase 5)
+    id bigint generated always as identity primary key,
+    name text not null,
+    per_100g jsonb not null                    -- kcal, macros, micros
 );
 
-CREATE TABLE shopping_list_items (
-    id INTEGER PRIMARY KEY,
-    food_name TEXT NOT NULL,
-    quantity REAL, unit TEXT,
-    status TEXT NOT NULL DEFAULT 'open',   -- 'open' | 'bought'
-    origin_recipe_id INTEGER REFERENCES recipes(id),
-    created_at TEXT NOT NULL
+create table shopping_list_items (
+    id bigint generated always as identity primary key,
+    food_name text not null,
+    quantity numeric, unit text,
+    status text not null default 'open',       -- 'open' | 'bought'
+    origin_recipe_id bigint references recipes(id),
+    created_at timestamptz not null default now()
 );
 
-CREATE TABLE goals (
-    id INTEGER PRIMARY KEY,
-    metric_id TEXT NOT NULL,        -- referencia o catálogo de métricas do Analytics (ENGINES.md)
-    target_value REAL NOT NULL,
-    direction TEXT NOT NULL,        -- 'increase' | 'decrease' | 'maintain'
-    deadline TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL
+create table goals (
+    id bigint generated always as identity primary key,
+    metric_id text not null,                   -- catálogo do Analytics (ENGINES.md)
+    target_value double precision not null,
+    direction text not null,                   -- 'increase' | 'decrease' | 'maintain'
+    deadline date,
+    active boolean not null default true,
+    created_at timestamptz not null default now()
 );
 ```
 
 ## Camada derivada (recalculável)
 
 ```sql
-CREATE TABLE metric_snapshots (
-    id INTEGER PRIMARY KEY,
-    metric_id TEXT NOT NULL,        -- ex.: 'sleep.duration.avg7d', 'recovery.score.daily', 'hrv.rmssd.avg7d'
-    period_start TEXT NOT NULL,     -- UTC
-    period_end TEXT NOT NULL,
-    value REAL,
-    detail TEXT,                    -- JSON: componentes do score, n de amostras, IC, etc.
-    computed_at TEXT NOT NULL,
-    algo_version TEXT NOT NULL,     -- versão do algoritmo que gerou (permite comparar após evolução)
-    UNIQUE (metric_id, period_start, period_end, algo_version)
+create table metric_snapshots (
+    id bigint generated always as identity primary key,
+    metric_id text not null,                   -- ex.: 'sleep.duration.avg7d', 'recovery.score.daily'
+    period_start timestamptz not null,
+    period_end   timestamptz not null,
+    value double precision,
+    detail jsonb,                              -- componentes, n de amostras, IC...
+    algo_version text not null,                -- permite comparar após evolução do algoritmo
+    computed_at timestamptz not null default now(),
+    unique (metric_id, period_start, period_end, algo_version)
 );
 
-CREATE TABLE insights (
-    id INTEGER PRIMARY KEY,
-    rule_id TEXT NOT NULL,          -- ex.: 'hrv_drop_after_short_sleep'
-    severity TEXT NOT NULL,         -- 'info' | 'attention' | 'alert'
-    title TEXT NOT NULL,
-    body TEXT NOT NULL,
-    evidence TEXT,                  -- JSON: métricas e valores que dispararam a regra
-    period_start TEXT, period_end TEXT,
-    created_at TEXT NOT NULL,
-    dismissed INTEGER NOT NULL DEFAULT 0
+create table insights (
+    id bigint generated always as identity primary key,
+    rule_id text not null,
+    severity text not null,                    -- 'info' | 'attention' | 'alert'
+    title text not null,
+    body text not null,
+    evidence jsonb,                            -- números que dispararam a regra
+    period_start timestamptz, period_end timestamptz,
+    dismissed boolean not null default false,
+    created_at timestamptz not null default now()
 );
 
-CREATE TABLE recommendations (
-    id INTEGER PRIMARY KEY,
-    insight_id INTEGER REFERENCES insights(id),
-    action_type TEXT NOT NULL,      -- 'sleep_earlier' | 'increase_protein' | 'reduce_training_load' | 'recipe' | ...
-    title TEXT NOT NULL,
-    body TEXT NOT NULL,
-    priority INTEGER NOT NULL,      -- 1 = mais importante
-    created_at TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'open'   -- 'open' | 'done' | 'dismissed'
+create table recommendations (
+    id bigint generated always as identity primary key,
+    insight_id bigint references insights(id),
+    action_type text not null,                 -- 'sleep_earlier' | 'increase_protein' | 'reduce_training_load' | 'recipe' | ...
+    title text not null,
+    body text not null,
+    priority int not null,                     -- 1 = mais importante
+    status text not null default 'open',       -- 'open' | 'done' | 'dismissed'
+    created_at timestamptz not null default now()
 );
 
-CREATE TABLE daily_summary (        -- materialização por dia local (America/Sao_Paulo)
-    day TEXT PRIMARY KEY,           -- 'YYYY-MM-DD'
-    sleep_duration_s REAL, sleep_score REAL,
-    resting_hr REAL, hrv_rmssd REAL,
-    steps INTEGER, workouts INTEGER, training_load REAL,
-    kcal_in REAL, protein_g REAL, water_l REAL,
-    weight_kg REAL,
-    recovery_score REAL,
-    computed_at TEXT NOT NULL
+create table daily_summary (
+    day date primary key,                      -- dia local America/Sao_Paulo
+    sleep_duration_s double precision, sleep_score double precision,
+    resting_hr double precision, hrv_rmssd double precision,
+    steps int, workouts int, training_load double precision,
+    kcal_in double precision, protein_g double precision, water_l double precision,
+    weight_kg double precision,
+    recovery_score double precision,
+    computed_at timestamptz not null default now()
 );
 ```
 
-## Regras de integridade
+## Integridade e RLS
 
-- `health_events` e `raw_records`: sem UPDATE (exceto `norm_status`/`superseded_by`) e sem DELETE — enforçado por convenção nos repositórios e por triggers de proteção nas migrations.
-- Toda linha de `health_events` referencia seu `raw_record_id` (rastreabilidade origem → evento).
-- Camada derivada pode ser truncada e regenerada: `uv run python -m app.engines.analytics.recompute --all`.
+- `raw_records`/`health_events`: UPDATE permitido só em `norm_status`/`superseded_by`; DELETE proibido — enforçado por policies RLS restritivas + triggers de proteção.
+- Toda linha de `health_events` referencia `raw_record_id` (rastreabilidade).
+- Uploads de exames (PDF/imagem) no Supabase Storage, bucket privado `exams`, referenciados por `raw_records.payload`.
+- Regeneração da camada derivada: rota admin `POST /api/v1/admin/recompute` (protegida, server-side).

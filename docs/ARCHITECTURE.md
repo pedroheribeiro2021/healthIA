@@ -1,149 +1,137 @@
-# HealthAI — Arquitetura
+# HealthIA — Arquitetura
+
+> v2 (nuvem). A v1 (servidor local Python) foi substituída — motivo e trade-offs em `notas/ADR/ADR-001-migracao-para-nuvem.md`.
 
 ## Visão geral
 
-Três aplicações, um servidor como centro de gravidade:
-
 ```
-┌─────────────────────┐         ┌──────────────────────────────────────┐
-│  sync-app (Android) │  Wi-Fi  │  server (PC local — Python/FastAPI)  │
-│  Expo + Health      │ ──────► │                                      │
-│  Connect            │  REST   │  api → normalization → repositories  │
-└─────────────────────┘         │            │                         │
-                                │            ▼                         │
-┌─────────────────────┐         │        SQLite (WAL)                  │
-│ dashboard (browser) │ ◄────── │            │                         │
-│ React + TS          │  REST   │            ▼                         │
-└─────────────────────┘         │      Analytics Engine                │
-                                │            ▼                         │
-                                │       Insight Engine                 │
-                                │            ▼                         │
-                                │   Recommendation Engine              │
-                                │            ▼                         │
-                                │   AI Engine (adapter) ─► Ollama /    │
-                                │                          Anthropic / │
-                                │                          OpenAI /    │
-                                │                          Gemini      │
-                                └──────────────────────────────────────┘
+┌──────────────────────┐          ┌─────────────────────────────────────────┐
+│ sync-app (Android)   │  HTTPS   │  web (Next.js na Vercel)                │
+│ Expo + Health        │ ───────► │                                         │
+│ Connect + fila local │          │  app/api (REST, thin)                   │
+└──────────────────────┘          │    → normalization → repositories ──────┼──► Supabase
+                                  │    → engines/analytics                  │    (Postgres
+┌──────────────────────┐          │    → engines/insights                   │     + RLS
+│ celular / desktop    │ ◄──────► │    → engines/recommendations            │     + Auth)
+│ (PWA no navegador)   │  HTTPS   │    → engines/ai ──► Gemini/Anthropic/…  │
+└──────────────────────┘          │  Vercel Cron: recálculo diário          │
+                                  └─────────────────────────────────────────┘
 ```
 
-O servidor roda no PC do usuário (`uvicorn`, porta 8000). O dashboard é build estático servido pelo próprio FastAPI. O sync-app fala com o servidor pelo IP local. Nada depende de nuvem.
+- **Uma aplicação Next.js** concentra dashboard (PWA), API REST e engines. Sem servidor próprio pra manter.
+- **Supabase** é o banco (Postgres), auth e storage de uploads (exames em PDF/imagem). Free tier.
+- **Vercel** faz build/deploy a cada push e roda o cron diário de recálculo. Free tier (hobby).
+- Nada depende do PC do Pedro estar ligado.
 
 ## Componentes
 
-### 1. Sync Engine (`sync-app/` + `server/app/api/sync.py`)
+### 1. Sync Engine (`sync-app/` + `web/src/app/api/sync/`)
 
-Responsabilidade única: mover dados brutos do Health Connect para o servidor. **Zero regra de negócio.**
+Responsabilidade única: mover dados brutos do Health Connect para a nuvem. **Zero regra de negócio.**
 
 - App Expo/React Native com `react-native-health-connect`.
 - Lê registros do Health Connect: sleep, exercise sessions, heart rate, HRV, steps, weight, body composition, hydration, nutrition.
-- Mantém **fila local persistente** (SQLite via expo-sqlite): captura sempre funciona, envio acontece quando o servidor estiver alcançável.
-- Envia lotes para `POST /api/v1/sync/batch`, com payload **bruto do Health Connect** (a normalização é responsabilidade do servidor — se o algoritmo de normalização mudar, os dados brutos permitem reprocessar).
-- Sincronização incremental: o app guarda `lastSyncTime` por tipo de registro e usa changes API do Health Connect quando disponível.
-- Descoberta do servidor: IP configurado manualmente na primeira execução + mDNS como melhoria futura.
+- **Fila local persistente** (expo-sqlite): captura sempre funciona; envio quando houver rede (qualquer rede — não depende de Wi-Fi de casa).
+- Sync incremental por `lastSyncTime`/changes API por tipo de registro; sync em background (expo-background-fetch) + botão manual.
+- Payload enviado **bruto** — normalização é do servidor (permite reprocessar histórico quando os normalizers evoluírem).
+- Auth: login único com a conta do Pedro (Supabase Auth); refresh token guardado com `expo-secure-store`.
 
 ### 2. Protocolo de sync
 
 ```
 POST /api/v1/sync/batch
-Authorization: Bearer <token local, gerado pelo servidor na instalação>
+Authorization: Bearer <JWT Supabase>
 
 {
   "device_id": "galaxy-s24-pedro",
   "records": [
-    {
-      "source": "health_connect",
-      "record_type": "SleepSession",          // nome do tipo no Health Connect
-      "external_id": "hc-uuid-123",           // id do registro na origem
-      "payload": { ...registro bruto... }
-    }
+    { "source": "health_connect",
+      "record_type": "SleepSession",
+      "external_id": "hc-uuid-123",
+      "payload": { ...registro bruto... } }
   ]
 }
-
 → 200 { "accepted": 120, "duplicates": 15, "failed": 0 }
 ```
 
-- **Idempotente**: reenviar o mesmo lote não duplica nada (dedup por `(source, external_id)` ou hash do payload; ver DATA_MODEL.md).
-- O servidor grava o payload bruto em `raw_records`, depois o Normalization Engine produz `health_events`.
-- Erros de normalização não rejeitam o lote: o registro bruto fica salvo com status `pending_normalization` para reprocesso.
+- **Idempotente**: dedup por `(source, external_id)` e por hash do payload (ver DATA_MODEL.md). Reenviar lote não duplica.
+- Registro bruto entra em `raw_records`; erro de normalização não rejeita o lote (fica `pending` para reprocesso).
 
-### 3. Normalization Engine (`server/app/normalization/`)
+### 3. Normalization Engine (`web/src/normalization/`)
 
-Converte qualquer origem para o modelo interno único (ver DATA_MODEL.md).
+- Um normalizer por fonte: `healthConnect.ts`, `bioimpedance.ts`, `labResults.ts`, `manual.ts`.
+- Contrato: `normalize(raw: RawRecord): HealthEvent[]`; registry por `(source, recordType)`.
+- Conversões obrigatórias: unidades → SI, timestamps → UTC, enums da origem → enums do domínio (schemas zod em `domain/`).
+- Reprocessável: rota admin `POST /api/v1/admin/reprocess` re-normaliza a partir de `raw_records`.
 
-- Um normalizer por fonte: `health_connect.py`, `bioimpedance.py`, `lab_results.py`, `manual.py`, `recipes.py`.
-- Contrato: `Normalizer.normalize(raw: RawRecord) -> list[HealthEvent]`.
-- Registrado num registry por `(source, record_type)`. Adicionar fonte nova = adicionar um normalizer, nada mais muda.
-- Conversões obrigatórias: unidades → SI, timestamps → UTC, enums da origem → enums do domínio.
-- Reprocessável: comando `uv run python -m app.normalization.reprocess` re-normaliza tudo a partir de `raw_records`.
+### 4. Banco (Supabase) e repositórios (`web/src/repositories/`)
 
-### 4. Banco de dados (`server/app/repositories/` + `server/migrations/`)
+- Postgres com **RLS ligado em tudo**: apenas o usuário autenticado (Pedro) lê/escreve; `anon` não acessa nada.
+- Acesso exclusivamente via repositórios (`eventRepository`, `metricRepository`, ...). Interfaces em `domain/`; a implementação usa `@supabase/supabase-js` — único lugar do web app que o importa.
+- Rotas server-side usam client com session do usuário; cron usa `service_role` (nunca exposto ao cliente).
+- Migrations: SQL versionado em `web/supabase/migrations/` via supabase CLI. Nunca editar migration aplicada.
+- Portabilidade: SQL padrão sempre que possível; recursos específicos (RLS, jsonb) confinados a migrations e repositórios.
 
-- SQLite em WAL mode; caminho em `HEALTHAI_DB_PATH` (default `~/.healthai/healthai.db`).
-- Acesso exclusivamente via repositórios (`EventRepository`, `MetricRepository`, `RecipeRepository`, ...). Interface dos repositórios definida em `domain/` com `Protocol` — implementação SQLite é um detalhe.
-- SQLAlchemy Core (não ORM) com SQL portável. Nada específico de SQLite fora desta camada → migração futura para PostgreSQL é trocar a implementação dos repositórios e a connection string.
-- Migrations: arquivos SQL numerados em `migrations/`, aplicados por um runner simples com tabela `schema_version`.
+### 5. Analytics Engine (`web/src/engines/analytics/`)
 
-### 5. Analytics Engine (`server/app/engines/analytics/`)
+Coração do sistema. Contratos em ENGINES.md. Regras estruturais:
 
-Coração do sistema. Ver contratos completos em ENGINES.md. Regras estruturais:
+- **Funções puras**: entram eventos/séries tipados, saem métricas tipadas. Sem I/O nos cálculos.
+- Orquestrador (`analyticsService`) busca dados via repositórios, executa calculators, persiste em `metric_snapshots`.
+- Execução: on-demand (rotas de API) + **Vercel Cron diário 06:00 America/Sao_Paulo** (recalcula o dia anterior, atualiza `daily_summary`, roda insights e recommendations).
+- Cache por `(metric, period)` invalidado quando chegam eventos novos no período.
 
-- **Funções puras**: entram DataFrames/séries, saem métricas tipadas. Sem I/O dentro dos cálculos.
-- Orquestrador (`AnalyticsService`) busca dados via repositórios, chama os cálculos, persiste resultados em `metric_snapshots`.
-- Execução: on-demand (request da API) + job diário (recalcula o dia anterior após sync).
-- Resultados cacheados por `(metric, period)` e invalidados quando chegam eventos novos no período.
+### 6. Insight Engine (`web/src/engines/insights/`)
 
-### 6. Insight Engine (`server/app/engines/insights/`)
+Indicadores → conclusões declarativas, com `evidence` numérica. Regras versionadas em código.
 
-Transforma indicadores em conclusões declarativas ("Seu HRV caiu 12% após noites < 6h"). Regras versionadas em código, cada uma com `id`, condição e template de texto. Saída persistida em `insights`.
+### 7. Recommendation Engine (`web/src/engines/recommendations/`)
 
-### 7. Recommendation Engine (`server/app/engines/recommendations/`)
+Insights + metas → ações priorizadas (máx. 3 abertas por dia no dashboard). Determinístico.
 
-Transforma insights em ações priorizadas ("durma antes das 23h hoje"; "aumente proteína em ~20 g"). Também determinístico.
+### 8. AI Engine (`web/src/engines/ai/`)
 
-### 8. AI Engine (`server/app/engines/ai/`)
+- Interface `AIProvider` + providers em `engines/ai/providers/` (`gemini.ts` default — free tier, `anthropic.ts`, `openai.ts`). SDKs de IA só aqui. Chamadas sempre server-side.
+- `ContextBuilder` monta o contexto com métricas/insights/recomendações **já calculados**. IA nunca recebe dados brutos para calcular.
+- Sem provider configurado o app funciona 100% — só o chat fica indisponível.
 
-- Interface única: `AIProvider.complete(system: str, messages: list[Message]) -> str` (+ streaming).
-- Providers em `engines/ai/providers/`: `ollama.py` (default), `anthropic.py`, `openai.py`, `gemini.py`. Seleção via config. SDKs de IA só podem ser importados aqui.
-- O contexto enviado à IA é montado pelo `ContextBuilder`: métricas, insights e recomendações **já calculados**. A IA nunca recebe dados brutos para calcular nada.
-- Sem IA configurada, o sistema funciona 100% — o chat fica indisponível, o resto não muda.
+### 9. Dashboard (PWA, `web/src/app` + `web/src/modules/`)
 
-### 9. Dashboard (`dashboard/`)
-
-- React + TS + Vite; build estático servido pelo FastAPI em `/`.
-- Um diretório por módulo de domínio (sono, futebol, academia, corpo, nutrição, exames, metas, tendências, comparativos, relatórios, IA, config).
-- Client de API tipado gerado do OpenAPI do FastAPI (`npm run generate:api`).
-- Apresenta o que a API entrega pronto. Nenhum cálculo de indicador no frontend.
+- Mobile-first (o uso principal é o celular); instalável (manifest + service worker), ícone na home screen.
+- Um diretório por módulo de domínio; gráficos com Recharts.
+- Server Components para leitura; mutações via rotas de API. Nenhum indicador calculado no cliente.
 
 ## Fluxo de dados (fim a fim)
 
 ```
 Galaxy Watch → Samsung Health → Health Connect
-      → sync-app (fila local) → POST /sync/batch
-      → raw_records (bruto, imutável)
-      → Normalization Engine → health_events (fonte da verdade normalizada)
-      → Analytics Engine → metric_snapshots
-      → Insight Engine → insights
-      → Recommendation Engine → recommendations
-      → Dashboard (API REST)  /  AI Engine (chat, explicações)
+  → sync-app (fila local) → POST /api/v1/sync/batch
+  → raw_records (bruto, imutável)
+  → Normalization → health_events (fonte da verdade normalizada)
+  → Analytics → metric_snapshots + daily_summary
+  → Insights → insights   → Recommendations → recommendations
+  → PWA (dashboard)  /  AI Engine (chat, explicações)
 ```
 
-Fontes sem app (bioimpedância, exames, receitas, dados manuais) entram por upload/formulário no dashboard → mesma pipeline a partir de `raw_records`.
+Fontes sem app (bioimpedância, exames, receitas, dados manuais) entram por upload/formulário no PWA → mesma pipeline a partir de `raw_records`.
 
-## Decisões de arquitetura (ADR resumido)
+## Auth e segurança
+
+- Supabase Auth, conta única (Pedro). Cadastro desabilitado; middleware do Next.js protege todas as rotas.
+- RLS nega tudo por padrão; policies liberam apenas o `user_id` do Pedro.
+- Segredos em env da Vercel / EAS; nada no repo. `service_role` só em código server-side (cron/admin).
+- Dados de saúde: criptografia em repouso e trânsito pelo Supabase; provider de IA recebe apenas o contexto mínimo já agregado.
+- Backup: `pg_dump` semanal via GitHub Action (artefato privado) — free tier do Supabase não tem PITR.
+
+## Decisões de arquitetura
+
+ADRs em `notas/ADR/`. Fundação:
 
 | # | Decisão | Motivo |
 |---|---|---|
-| 1 | Servidor local + web, não app all-in-one | Analytics em Python (pandas/scipy); custo zero; offline first |
-| 2 | Sync-app em Expo/RN, não Kotlin | Reuso de TypeScript; `react-native-health-connect` cobre a necessidade |
-| 3 | Payload bruto enviado ao servidor; normalização no servidor | Permite reprocessar histórico quando normalizers evoluírem |
-| 4 | SQLite Core + repositórios, não ORM | Portabilidade p/ PostgreSQL, SQL sob controle, desacoplamento exigido |
-| 5 | `raw_records` + `health_events` append-only | Fonte da verdade preservada; indicadores recalculáveis para sempre |
-| 6 | Ollama como provider default de IA | Gratuito, local, offline; nuvem é opt-in |
-| 7 | Dashboard estático servido pelo FastAPI | Um processo só, zero infra extra |
-
-## Segurança
-
-- Servidor escuta na rede local; token bearer estático gerado na instalação para o sync-app.
-- Banco e dados nunca saem da máquina (exceto contexto mínimo enviado a provider de IA remoto, se o usuário optar).
-- Backup: cópia do arquivo SQLite + `raw_records` é suficiente para restaurar tudo.
+| ADR-001 | Nuvem (Vercel + Supabase) em vez de servidor local | Acesso de qualquer lugar pelo celular, sempre no ar, custo zero, padrão dos outros apps do Pedro |
+| — | Analytics em TypeScript puro dentro do Next.js | Uma linguagem só, testável com vitest, roda em serverless |
+| — | Payload bruto na nuvem; normalização no servidor | Reprocessar histórico quando normalizers evoluírem |
+| — | `raw_records` + `health_events` append-only | Fonte da verdade preservada; indicadores recalculáveis |
+| — | Supabase atrás de repositórios | Trocável por Postgres puro/outro BaaS sem tocar engines |
+| — | Gemini free tier como provider default de IA | Custo zero; adapter mantém Anthropic/OpenAI plugáveis |

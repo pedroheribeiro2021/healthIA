@@ -2,7 +2,7 @@
 
 > Plataforma pessoal de inteligência em saúde. Transforma medições em decisões.
 
-Sistema local (offline first) que unifica dados do Galaxy Watch 8 / Samsung Health, bioimpedância, exames laboratoriais e nutrição, e responde continuamente:
+PWA mobile-first, sempre acessível, que unifica dados do Galaxy Watch 8 / Samsung Health (via Health Connect), bioimpedância, exames laboratoriais e nutrição, e responde continuamente:
 
 > **"O que devo fazer hoje para melhorar minha saúde amanhã?"**
 
@@ -14,11 +14,11 @@ Sistema local (offline first) que unifica dados do Galaxy Watch 8 / Samsung Heal
 - [`docs/ENGINES.md`](docs/ENGINES.md) — contratos dos engines
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — fases de implementação
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — fluxo de trabalho e conventional commits
-- [`notas/`](notas/) — registro de sessões e pendências (memória do projeto)
+- [`notas/`](notas/) — registro de sessões, pendências e ADRs
 
 ## Stack
 
-Python/FastAPI (backend + analytics) · SQLite · React/TypeScript (dashboard) · Expo/React Native (sync Android via Health Connect) · IA plugável (Ollama default).
+Next.js + TypeScript + Tailwind (PWA na Vercel) · Supabase (Postgres + Auth) · Analytics em TS puro (o coração do sistema) · Expo/React Native (sync Android via Health Connect) · IA plugável (Gemini free tier default).
 
 ## Começando
 
