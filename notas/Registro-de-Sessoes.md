@@ -20,3 +20,26 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - Dados de saúde (`*.db`) nunca versionados no git.
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — começar pela Fase 0 do roadmap.
+
+---
+
+## 2026-07-19 — Fase 0: Fundação do monorepo
+
+**Objetivo:** executar a Fase 0 do roadmap — scaffold de `server/`, `dashboard/` e `sync-app/` com testes verdes.
+
+**Realizado:**
+- `server/`: projeto uv (Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy Core). `app/main.py` com app factory + lifespan que roda as migrations no start. `GET /health`.
+- Migration runner (`app/repositories/sqlite/migrations.py`, sqlite3 puro por causa dos triggers com `BEGIN..END`) + `migrations/001_initial.sql` com o schema completo do DATA_MODEL.md, incluindo triggers de proteção append-only em `raw_records` e `health_events` (bloqueiam DELETE e UPDATE fora dos campos permitidos).
+- `EventRepository`: `Protocol` em `app/domain/repositories.py` + implementação `SqliteEventRepository`.
+- 7 testes pytest (health check, migrations idempotentes/schema completo/triggers, repositório) — todos verdes. `ruff check`/`ruff format` limpos.
+- `dashboard/`: scaffold Vite + React + TS (`npm create vite -- --template react-ts`), boilerplate padrão do template removido, build validado.
+- `sync-app/`: scaffold Expo (`create-expo-app --template blank-typescript`), `App.tsx` movido para `src/App.tsx` (consistente com a estrutura documentada em CLAUDE.md), `LICENSE` do template removida, typecheck validado. Nota: o scaffold do Expo cria `.claude/settings.json` habilitando o plugin oficial `expo@claude-plugins-official` — mantido (é comportamento padrão da ferramenta, não intervenção manual).
+- `scripts/ci.sh`: CI local simples (lint + testes + build dos três apps), item que estava no critério da Fase 0.
+- Branch `fase-0-fundacao` criada para o trabalho, conforme convenção do CONTRIBUTING.md.
+
+**Decisões:**
+- Migration runner usa `sqlite3` da stdlib diretamente (não SQLAlchemy Core) para poder rodar `executescript` com triggers multi-statement; repositórios seguem usando SQLAlchemy Core, mantendo a portabilidade exigida pela arquitetura.
+- Triggers de append-only ficam na migration (camada permitida a ter SQL específico de dialeto).
+- "CI local simples" da Fase 0 interpretado como script de shell (`scripts/ci.sh`), não pipeline em nuvem — coerente com o princípio offline first; não há decisão de usar GitHub Actions.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — começar pela Fase 1 (ingestão manual + fonte da verdade).

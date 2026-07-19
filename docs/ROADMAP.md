@@ -3,12 +3,14 @@
 Fases pequenas, cada uma termina com algo funcionando de ponta a ponta.
 Ordem pensada para gerar valor cedo: dados manuais e dashboard vêm antes do sync automático.
 
-## Fase 0 — Fundação
+## Fase 0 — Fundação ✅ concluída (2026-07-19)
 - Monorepo com `server/`, `dashboard/`, `sync-app/` (sync-app só scaffold).
 - FastAPI de pé com healthcheck; migrations runner + migration 001 (todas as tabelas do DATA_MODEL.md).
 - Repositórios com interface `Protocol` + implementação SQLite; pytest e ruff configurados; CI local simples.
 
 **Pronto quando:** `uv run pytest` verde; `GET /health` responde; banco criado com schema completo.
+
+**Entregue:** `server/` com FastAPI (`app/main.py`, lifespan roda migrations), migration 001 com schema completo do DATA_MODEL.md (inclui triggers de append-only em `raw_records`/`health_events`), `EventRepository` (`Protocol` em `domain/` + implementação SQLite), 7 testes pytest verdes, ruff limpo. `dashboard/` scaffold Vite+React+TS buildando. `sync-app/` scaffold Expo (blank-typescript) com `App.tsx` em `src/`, typecheck limpo. `scripts/ci.sh` roda lint+testes+build dos três apps localmente ("CI local simples" — sem GitHub Actions, coerente com offline first).
 
 ## Fase 1 — Ingestão manual + fonte da verdade
 - `POST /api/v1/events/manual` (peso, hidratação, refeição simples, nota).

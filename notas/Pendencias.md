@@ -1,14 +1,12 @@
 # Pendências — HealthIA
 
-## Agora (Fase 0 — Fundação)
-- [ ] Scaffold `server/` (FastAPI + uv + pytest + ruff) com `GET /health`
-- [ ] Migrations runner + migration 001 (schema completo do DATA_MODEL.md)
-- [ ] Repositórios (Protocol + implementação SQLite)
-- [ ] Scaffold `dashboard/` (Vite + React + TS)
-- [ ] Scaffold `sync-app/` (Expo, só estrutura)
+## Agora (Fase 1 — Ingestão manual + fonte da verdade)
+- [ ] `POST /api/v1/events/manual` (peso, hidratação, refeição simples, nota)
+- [ ] Pipeline completa: raw_records → Normalization Engine → health_events (dedup e reprocesso)
+- [ ] Dashboard mínimo: formulário de registro manual + lista/gráfico de peso
 
 ## Depois
-- [ ] Fase 1 — ingestão manual + pipeline raw→events (ver docs/ROADMAP.md)
+- [ ] Fase 2 — sync automático via Health Connect (ver docs/ROADMAP.md)
 
 ## Decisões pendentes
 - [ ] Modelo do Ollama a usar por padrão (llama3.1 8B é a hipótese; validar na Fase 6)
