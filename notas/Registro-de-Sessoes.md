@@ -43,3 +43,16 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - "CI local simples" da Fase 0 interpretado como script de shell (`scripts/ci.sh`), não pipeline em nuvem — coerente com o princípio offline first; não há decisão de usar GitHub Actions.
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — começar pela Fase 1 (ingestão manual + fonte da verdade).
+
+---
+
+## 2026-07-19 (3) — Arquivamento da stack local
+
+**Contexto:** ao commitar a v2, descobri que uma sessão do Claude Code já havia implementado a Fase 0 na stack local (server/ FastAPI, dashboard/ Vite, sync-app/) e tinha Fase 1 parcial não commitada. Pedro confirmou manter o pivô para nuvem.
+
+**Realizado:**
+- Trabalho pendente da Fase 1 commitado na branch **`legacy-local`** (junto com toda a stack Python) — nada foi perdido.
+- `main` limpa: só docs + notas, pronta para a Fase 0 da v2 (Next.js + Supabase).
+- `.claude/` (settings locais do Claude Code) adicionado ao .gitignore.
+
+**Atenção:** se houver sessão do Claude Code aberta seguindo o roadmap antigo, encerrar antes de continuar — os docs em main agora descrevem a arquitetura v2.
