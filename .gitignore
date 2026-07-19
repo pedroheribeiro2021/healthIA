@@ -32,3 +32,6 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+
+# Claude Code local
+.claude/
