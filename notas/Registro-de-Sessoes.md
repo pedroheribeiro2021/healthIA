@@ -43,3 +43,19 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - "CI local simples" da Fase 0 interpretado como script de shell (`scripts/ci.sh`), não pipeline em nuvem — coerente com o princípio offline first; não há decisão de usar GitHub Actions.
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — começar pela Fase 1 (ingestão manual + fonte da verdade).
+
+---
+
+## 2026-07-19 (2) — Pivô de arquitetura: local → nuvem
+
+**Objetivo:** revisar a arquitetura após questionamento do Pedro sobre acesso pelo celular.
+
+**Realizado:**
+- Discutidas 3 opções (nuvem, Tailscale, só local). Pedro escolheu **nuvem: Vercel + Supabase**, padrão dos seus outros apps.
+- Decisão registrada em [ADR-001](ADR/ADR-001-migracao-para-nuvem.md).
+- Documentação inteira reescrita para v2: `CLAUDE.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md` (Postgres/RLS), `docs/ENGINES.md` (interfaces TS), `docs/ROADMAP.md` (Fase 0 = Supabase + Vercel + deploy).
+- Pendências da Fase 0 atualizadas.
+
+**Decisões:** ver ADR-001. Destaques: analytics em TS puro (sem Python), Gemini free tier como IA default, PWA mobile-first como interface principal, princípio "offline first" revisado para "acessível em qualquer lugar, resiliente a offline".
+
+**Próximos passos:** Fase 0 no Claude Code — criar projeto Supabase, scaffold Next.js, migration 001, auth e deploy.
