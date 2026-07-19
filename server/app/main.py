@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+import app.normalization  # noqa: F401  registra os normalizers (efeito colateral de import)
+from app.api.events import router as events_router
 from app.api.health import router as health_router
 from app.config import get_settings
 from app.repositories.sqlite.connection import make_engine
@@ -20,6 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title="HealthAI", lifespan=lifespan)
     app.include_router(health_router)
+    app.include_router(events_router)
     return app
 
 
