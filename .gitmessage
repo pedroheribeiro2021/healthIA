@@ -1,0 +1,9 @@
+# tipo(escopo): descrição no imperativo (máx. 100 chars)
+#
+# Corpo (opcional): o quê e por quê, não como.
+#
+# Rodapé (opcional): BREAKING CHANGE: ... | Refs: ...
+#
+# Tipos: feat fix docs style refactor perf test build ci chore revert
+# Escopos: server dashboard sync-app analytics insights recommendations
+#          ai db api normalization docs

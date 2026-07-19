@@ -1,0 +1,22 @@
+#!/bin/sh
+# Valida Conventional Commits. Bypass consciente: git commit --no-verify
+msg_file="$1"
+first_line=$(head -n1 "$msg_file")
+
+# Ignora commits de merge/revert automáticos
+case "$first_line" in
+  Merge*|Revert*) exit 0 ;;
+esac
+
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?(!)?: .{1,100}$'
+
+if ! printf '%s' "$first_line" | grep -Eq "$pattern"; then
+  echo "" >&2
+  echo "✖ Commit fora do padrão Conventional Commits." >&2
+  echo "  Formato: tipo(escopo): descrição" >&2
+  echo "  Tipos: feat fix docs style refactor perf test build ci chore revert" >&2
+  echo "  Exemplo: feat(analytics): implementa recovery score v1" >&2
+  echo "  Ver CONTRIBUTING.md" >&2
+  exit 1
+fi
+exit 0
