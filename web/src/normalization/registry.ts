@@ -1,0 +1,30 @@
+import type { NewHealthEvent } from "@/domain/healthEvent";
+import type { RawRecord } from "@/domain/rawRecord";
+import {
+  normalizeHydrationEntry,
+  normalizeMealEntry,
+  normalizeNoteEntry,
+  normalizeWeightEntry,
+} from "./manual";
+
+type Normalizer = (raw: RawRecord) => NewHealthEvent[];
+
+const registry = new Map<string, Normalizer>([
+  ["manual:WeightEntry", normalizeWeightEntry],
+  ["manual:HydrationEntry", normalizeHydrationEntry],
+  ["manual:MealEntry", normalizeMealEntry],
+  ["manual:NoteEntry", normalizeNoteEntry],
+]);
+
+// Contrato do Normalization Engine (docs/ARCHITECTURE.md): raw_record ->
+// health_events, resolvido por (source, record_type). Reprocessável a
+// qualquer momento a partir de raw_records.
+export function normalize(raw: RawRecord): NewHealthEvent[] {
+  const normalizer = registry.get(`${raw.source}:${raw.recordType}`);
+  if (!normalizer) {
+    throw new Error(
+      `sem normalizer registrado para ${raw.source}:${raw.recordType}`,
+    );
+  }
+  return normalizer(raw);
+}

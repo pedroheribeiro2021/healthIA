@@ -14,12 +14,13 @@ Dados manuais e dashboard vêm antes do sync automático — valor desde a prime
 **Pronto quando:** app no ar na URL da Vercel, login do Pedro funciona, schema aplicado, `npm test` e `npm run typecheck` verdes.
 **Status:** app no ar ✅, schema aplicado ✅, testes/typecheck verdes ✅ — falta expor o schema `healthia` na Data API do Supabase e criar a conta real do Pedro para o login funcionar de ponta a ponta em produção. Ver `notas/Pendencias.md`.
 
-## Fase 1 — Ingestão manual + fonte da verdade
-- `POST /api/v1/events/manual` (peso, hidratação, refeição simples, nota).
-- Pipeline completa: raw_records → Normalization → health_events (dedup + reprocesso).
-- PWA: formulário de registro rápido + gráfico de peso. Instalável no celular (manifest + ícone).
+## Fase 1 — Ingestão manual + fonte da verdade (implementada em 2026-07-20, ver notas/Registro-de-Sessoes.md)
+- `POST /api/v1/events/manual` (peso, hidratação, refeição simples, nota). ✅
+- Pipeline completa: raw_records → Normalization → health_events (dedup + reprocesso). ✅ `normalization/registry.ts` (contrato `normalize(raw)` por `source:recordType`) + `normalization/ingest.ts` (orquestração, reaproveitável pela Fase 2 e por um futuro `/admin/reprocess`).
+- PWA: formulário de registro rápido + gráfico de peso. Instalável no celular (manifest + ícone). ✅ `modules/registro/`.
 
 **Pronto quando:** registrar peso pelo celular na rua e ver o gráfico atualizado; linhas correspondentes em raw_records e health_events.
+**Status:** código implementado, testado (unit + typecheck + build + verificação visual em produção) e mergeado. Falta só o teste real de Pedro pelo celular (ver `notas/Pendencias.md`) — decisão deliberada de não simular esse teste a partir do dev server, já que `raw_records`/`health_events` são append-only (sem DELETE) e qualquer registro de teste ficaria permanente na base de produção.
 
 ## Fase 2 — Sync automático (Health Connect)
 - sync-app Expo: permissões Health Connect, leitura de sono/treinos/FC/HRV/passos/peso, fila local, envio em lote, sync incremental + background.

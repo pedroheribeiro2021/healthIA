@@ -152,3 +152,28 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - Grants não incluem `DELETE` para `authenticated` — coerente com o princípio de fonte da verdade imutável (`raw_records`/`health_events` são append-only via trigger; as demais tabelas não têm caso de uso de exclusão pelo cliente hoje).
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — só falta o Pedro trocar a senha temporária `123456` por uma definitiva. Próximo passo de desenvolvimento: Fase 1 (ingestão manual + pipeline raw→events + PWA instalável).
+
+---
+
+## 2026-07-20 (2) — Fase 1: ingestão manual + pipeline raw→events + PWA
+
+**Objetivo:** implementar a Fase 1 do roadmap — `POST /api/v1/events/manual`, pipeline raw_records → Normalization → health_events, formulário de registro rápido e gráfico de peso no PWA.
+
+**Realizado:**
+- Antes de começar: commitados os arquivos da Fase 0 que a sessão anterior tinha aplicado no Supabase mas deixado sem commit (migrations 004/005 + `notas/`), e feito merge (`--ff-only`, local) de `fase-0-fundacao` em `main`. Branch `fase-1-ingestao` criada a partir de `main`.
+- `domain/manualEntry.ts`: schemas zod para os 4 tipos de lançamento manual (peso, hidratação, refeição, nota) + mapeamento tipo → `record_type` (`WeightEntry`/`HydrationEntry`/`MealEntry`/`NoteEntry`).
+- `normalization/payloadHash.ts`: sha256 do payload canônico (chaves ordenadas), para dedup determinístico.
+- `normalization/manual.ts`: `buildManualRawRecord` (monta o `NewRawRecord` a partir do input validado) + 4 funções `normalize*Entry` (raw → health_event).
+- `normalization/registry.ts`: contrato do Normalization Engine — `normalize(raw)` resolvido por `source:record_type`, documentado em ARCHITECTURE.md.
+- `normalization/ingest.ts`: orquestração da pipeline completa (insere raw_record → normaliza → insere health_events → marca `norm_status`), reaproveitável por sync/admin em fases futuras. Erro de normalização não descarta o raw_record (fica `error`, pronto pra reprocesso).
+- `app/api/v1/events/manual/route.ts`: rota REST thin (só parse/validação + chamada da pipeline).
+- `modules/registro/QuickEntryForm.tsx` (client, seletor de tipo + campos dinâmicos) e `WeightChart.tsx` (Recharts, adicionado como dependência — já previsto no CLAUDE.md mas não instalado ainda). Plugados em `app/page.tsx`, que agora busca `health_events` de peso via `eventRepository` (Server Component) em vez do placeholder da Fase 0.
+- 27 testes (vitest) cobrindo schemas, hash, normalizers e a orquestração de ingestão (com repositório fake em memória — sem tocar o Supabase real). `npm run typecheck`, `npm run lint` e `npm run build` verdes.
+
+**Decisões:**
+- **Dedup de lançamento manual usa `external_id = payload_hash`.** `raw_records` tem `unique nulls not distinct (source, external_id)` — como lançamentos manuais não têm um id externo natural, deixar `external_id` nulo faria o **segundo** lançamento manual de qualquer tipo colidir com o primeiro (Postgres trata dois `NULL` como iguais nesse tipo de constraint), travando a ingestão manual depois do primeiro registro. Usar o hash do payload como `external_id` resolve isso e mantém o dedup por conteúdo pretendido (reenvio idêntico = duplicate).
+- **Orquestração raw→events mora em `normalization/ingest.ts`**, não em `app/api/`: a rota fica thin (CLAUDE.md) e a função é reaproveitável tal como está pelo endpoint de sync da Fase 2 e por um futuro `/admin/reprocess`.
+- **Não foi feito teste de submissão real no browser contra o Supabase de produção.** `raw_records`/`health_events` são append-only (sem policy de DELETE) — qualquer lançamento de teste ficaria permanente na base real do Pedro. Validado em vez disso: suíte de testes automatizados (normalização/hash/orquestração com repositório fake) + build/typecheck/lint verdes + verificação visual no browser contra produção real (login, leitura de `health_events` vazia funcionando, os 4 formulários renderizando corretamente) sem clicar em "Registrar". O teste de ponta a ponta com dado real (registrar peso pela rua) fica para o Pedro — é literalmente o critério de "pronto" do roadmap.
+- Branch `fase-1-ingestao` criada e commitada; **ainda não mergeada em `main` nem enviada ao GitHub** — push/merge/deploy ficam pendentes de confirmação do Pedro (deploy automático na Vercel dispara a partir do push).
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — Pedro: revisar o código, decidir sobre merge/push (dispara deploy), depois testar o registro de peso pelo celular em produção. Próximo passo de desenvolvimento: Fase 2 (sync automático via Health Connect).
