@@ -1,10 +1,11 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { HealthEvent, NewHealthEvent } from "@/domain/healthEvent";
 import type {
   EventRepository,
   InsertRawRecordResult,
 } from "@/domain/repositories";
 import type { NewRawRecord, RawRecord } from "@/domain/rawRecord";
-import type { Json } from "./supabase/databaseTypes";
+import type { Database, Json } from "./supabase/databaseTypes";
 import { createSupabaseServerClient } from "./supabase/serverClient";
 
 const UNIQUE_VIOLATION = "23505";
@@ -63,9 +64,13 @@ function toHealthEvent(row: {
   };
 }
 
-export async function createSupabaseEventRepository(): Promise<EventRepository> {
-  const supabase = await createSupabaseServerClient();
-
+// Fábrica pura: recebe um client já autenticado (cookie-based ou
+// Bearer — ver repositories/supabase/auth.ts) e retorna o repositório.
+// Permite reusar a mesma implementação tanto em Server Components quanto
+// em Route Handlers chamados pelo sync-app.
+export function createEventRepositoryFromClient(
+  supabase: SupabaseClient<Database, "healthia">,
+): EventRepository {
   return {
     async insertRawRecord(
       record: NewRawRecord,
@@ -159,4 +164,12 @@ export async function createSupabaseEventRepository(): Promise<EventRepository> 
       return data.map(toHealthEvent);
     },
   };
+}
+
+// Conveniência para Server Components/rotas que autenticam via cookie de
+// sessão (uso mais comum no dashboard). Rotas chamadas pelo sync-app usam
+// createEventRepositoryFromClient diretamente com o client Bearer.
+export async function createSupabaseEventRepository(): Promise<EventRepository> {
+  const supabase = await createSupabaseServerClient();
+  return createEventRepositoryFromClient(supabase);
 }

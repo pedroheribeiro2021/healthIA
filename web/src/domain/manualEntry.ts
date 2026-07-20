@@ -1,8 +1,5 @@
 import { z } from "zod";
-
-const isoDateTime = z
-  .string()
-  .refine((value) => !Number.isNaN(Date.parse(value)), "Data/hora inválida");
+import { isoDateTimeSchema as isoDateTime } from "./shared";
 
 export const mealTypeSchema = z.enum([
   "breakfast",

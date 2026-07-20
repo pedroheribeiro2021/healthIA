@@ -3,9 +3,17 @@
 ## Ação do Pedro
 
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado.
-- [ ] **Testar a Fase 1 no celular, em produção** — só depois de decidir sobre o merge de `fase-1-ingestao` em `main` (ver abaixo). Abrir o PWA, registrar um peso real pela rua e conferir se o gráfico atualiza. Deliberadamente não simulado a partir do dev server, porque `raw_records`/`health_events` são append-only (sem DELETE) e um registro de teste ficaria permanente na base de produção.
-- [ ] **Decidir sobre o merge de `fase-1-ingestao` em `main`.** Está pronta, testada e com deploy validado (preview), mas ainda não mergeada — produção (`main`) segue só com o fechamento da Fase 0.
-- [ ] **Reautorizar o escopo da integração MCP da Vercel** (claude.ai → Configurações → Conectores → Vercel) para incluir o projeto `healthia` — hoje `list_projects`/`list_teams` da integração não o enxergam (só o dashboard via sessão de browser funciona), provavelmente porque o projeto não estava no escopo concedido quando a integração foi conectada.
+- [ ] **Testar a Fase 1 no celular, em produção.** Abrir o PWA (já em produção), registrar um peso real pela rua e conferir se o gráfico atualiza. Deliberadamente não simulado a partir do dev server, porque `raw_records`/`health_events` são append-only (sem DELETE) e um registro de teste ficaria permanente na base de produção.
+- [ ] **Rodar o sync-app num Android real com Health Connect** (Samsung Health → Health Connect ativado, Galaxy Watch 8 sincronizando): `cd sync-app && npm install`, copiar `.env.example` pra `.env` com as chaves do Supabase + `EXPO_PUBLIC_API_BASE_URL`, `npx expo prebuild -p android`, `npx expo run:android`. Health Connect não roda no Expo Go — precisa gerar um dev client. Sem acesso a um Android real ou emulador com Health Connect neste ambiente, essa parte só foi validada até `tsc --noEmit`; o app nunca rodou de fato.
+- [ ] **Decidir sobre o merge de `fase-2-sync` em `main`** depois do teste acima confirmar que sono/treino real aparecem em `health_events` (critério de "pronto" da Fase 2).
+
+## Resolvido em 2026-07-20 (4) — Fase 1 mergeada em produção + Fase 2 (sync automático) implementada
+
+- [x] Pedro reautorizou o escopo da integração MCP da Vercel — `list_projects`/`list_teams` agora enxergam o projeto `healthia`.
+- [x] Pedro mergeou o PR `fase-1-ingestao` → `main` direto pelo GitHub; deploy de produção confirmado `READY` (commit `f83bc3c2`, via MCP `list_deployments`).
+- [x] **Fase 2 implementada**: lado servidor completo (`POST /api/v1/sync/batch` idempotente + 9 normalizers do Health Connect — sono, treino, FC, HRV, passos, peso, composição corporal, hidratação, refeição — com conversão de unidades pra SI), testado (50 testes no total, unit com repositório fake). Rotas de API agora suportam autenticação via cookie (navegador) **ou** `Authorization: Bearer` (sync-app, sem cookies) — `proxy.ts` não intercepta mais `/api/*`.
+- [x] `sync-app/` scaffolded (Expo + TypeScript): login com a conta do Pedro (sessão via SecureStore fragmentado em chunks — token do Supabase não cabe no limite de ~2KB por item), fila local em SQLite, sync manual + tentativa de background (`expo-background-fetch`). `tsc --noEmit` limpo. **Nunca rodado de verdade** — sem Android/emulador com Health Connect disponível neste ambiente (ver Ação do Pedro acima).
+- [x] Branch `fase-2-sync` criada a partir de `main`, commitada. Não mergeada — depende do teste real do Pedro.
 
 ## Resolvido em 2026-07-20 (3) — Bug real: Root Directory da Vercel nunca foi salvo
 

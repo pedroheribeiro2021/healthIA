@@ -2,12 +2,18 @@ import { NextResponse } from "next/server";
 import { manualEntryInputSchema } from "@/domain/manualEntry";
 import { ingestRawRecord } from "@/normalization/ingest";
 import { buildManualRawRecord } from "@/normalization/manual";
-import { createSupabaseEventRepository } from "@/repositories/eventRepository";
+import { createEventRepositoryFromClient } from "@/repositories/eventRepository";
+import { authenticateRequest } from "@/repositories/supabase/auth";
 
 // Rota thin (docs/ARCHITECTURE.md): só parse/validação de entrada e resposta
 // HTTP. Toda regra (mapeamento de tipo, dedup, normalização) vive em
 // domain/normalization.
 export async function POST(request: Request) {
+  const auth = await authenticateRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: "não autenticado" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   const rawRecord = buildManualRawRecord(parsed.data);
-  const repo = await createSupabaseEventRepository();
+  const repo = createEventRepositoryFromClient(auth.client);
   const result = await ingestRawRecord(repo, rawRecord);
 
   if (result.status === "duplicate") {
