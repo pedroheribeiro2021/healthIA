@@ -196,3 +196,33 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - MCP da Vercel não enxerga o projeto `healthia` (`list_projects` não retorna) mesmo com `list_teams` funcionando — escopo da integração, não corrigível por ferramenta; só o dashboard via sessão de browser do Pedro funciona. Fica pendência dele reautorizar o escopo.
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — decidir sobre merge de `fase-1-ingestao` em `main`, depois testar registro de peso real pelo celular.
+
+---
+
+## 2026-07-20 (4) — Fase 1 mergeada em produção; Fase 2 (sync automático) implementada
+
+**Objetivo:** Pedro reautorizou o escopo da integração MCP da Vercel; pediu pra avançar para a próxima fase do roadmap.
+
+**Realizado:**
+- Confirmado via `list_projects` que o MCP da Vercel agora enxerga `healthia`.
+- Pedro já tinha mergeado `fase-1-ingestao` → `main` direto pelo GitHub (PR #1) enquanto eu investigava o deploy — só sincronizei o `main` local (fast-forward) em vez de tentar dar push. Deploy de produção do merge confirmado `READY` via `list_deployments` (commit `f83bc3c2`).
+- **Fase 2 — lado servidor** (branch `fase-2-sync`, a partir de `main`):
+  - Pesquisado via `WebFetch` o formato real dos tipos de registro do `react-native-health-connect` (SleepSession, ExerciseSession, HeartRate, HeartRateVariabilityRmssd, Steps, Weight, BodyFat, Hydration, Nutrition — incluindo `metadata.id`, unidades de Mass/Volume/Energy e os enums numéricos de sleep stage/exercise type/meal type) direto do código-fonte da lib no GitHub, pra não normalizar em cima de suposição.
+  - `domain/healthConnect.ts` (schemas zod desses 9 tipos) + `normalization/units.ts` (conversores de unidade pra SI, com testes) + `normalization/healthConnect.ts` (9 normalizers) + `registry.ts` estendido com as chaves `health_connect:*`.
+  - `POST /api/v1/sync/batch` (`normalization/syncBatch.ts` + rota): idempotente, um item que falha não derruba o lote inteiro, contrato `{accepted, duplicates, failed}` de docs/ARCHITECTURE.md.
+  - **Autenticação de API repensada**: o sync-app não tem cookies de navegador, só um JWT do Supabase. Criado `repositories/supabase/auth.ts` (`authenticateRequest`) que aceita cookie **ou** `Authorization: Bearer`, e `repositories/supabase/bearerClient.ts`. `proxy.ts` não intercepta mais `/api/*` — cada rota autentica a si mesma e responde 401 em JSON (antes, uma chamada de API sem sessão seria redirecionada pra `/login`, o que não faz sentido pra um cliente não-navegador). `eventRepository.ts` ganhou `createEventRepositoryFromClient` (fábrica pura) além do `createSupabaseEventRepository` (cookie-based) já existente; a rota de eventos manuais também foi migrada pro novo padrão de auth.
+  - 50 testes no total (22 novos), typecheck/lint/build verdes.
+- **Fase 2 — sync-app** (Expo + TypeScript, reaproveitando o scaffold básico já commitado em `legacy-local`):
+  - Login com a conta do Pedro (Supabase); sessão persistida via `expo-secure-store` com um adapter que fragmenta valores grandes em vários itens (a sessão do Supabase passa do limite de ~2KB por item do SecureStore — padrão documentado pelo próprio Supabase pra Expo).
+  - `lib/healthConnect.ts` (init, permissões, leitura paginada), `lib/recordMapping.ts` (registro → item do lote, `external_id = metadata.id`), `lib/queue.ts` (fila local em `expo-sqlite` + tabela de último sync por tipo), `lib/sync.ts` (orquestração: puxa do Health Connect desde o último sync — ou 30 dias no primeiro sync, limite de retenção documentado — enfileira, envia em lote com `Authorization: Bearer`), `background/backgroundSync.ts` (`expo-task-manager`/`expo-background-fetch`, best-effort).
+  - `HomeScreen`/`LoginScreen` minimalistas: pedir permissão, botão "sincronizar agora", status da última sincronização.
+  - `npm install` + `tsc --noEmit` rodados de verdade (dependências resolvem, sem erro de tipo) — é o máximo que dá pra verificar sem um Android com Health Connect. **O app nunca foi executado.**
+  - `CLAUDE.md` (raiz) atualizado: comando antigo (`expo start`) estava errado pra esse caso — Health Connect exige dev client (`expo prebuild` + `expo run:android`), não roda no Expo Go.
+
+**Decisões:**
+- **Não simulei/testei o sync-app rodando de verdade.** Health Connect só existe em Android real (ou emulador com Play Store + Health Connect instalado), e este ambiente não tem nenhum dos dois. Diferente do teste de peso da Fase 1 (que eu escolhi não fazer por prudência com dado de produção), aqui é uma limitação de ambiente, não de escolha — o código está no melhor estado que dá pra alcançar sem execução real.
+- `external_id` dos registros do Health Connect = `metadata.id` (id do próprio registro na origem) — diferente da Fase 1, onde lançamentos manuais precisaram do hash do payload como `external_id` por não terem um id natural.
+- `proxy.ts` não protege mais `/api/*`: cada rota autentica explicitamente (cookie ou Bearer). Mudança deliberada, não só pra suportar o sync-app — uma rota de API redirecionar (302) uma chamada não-autenticada pra uma página HTML de login sempre foi um contrato ruim pra um cliente REST.
+- `fase-2-sync` criada a partir de `main` (que já inclui a Fase 1). Não mergeada — depende do teste real do Pedro no celular dele.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — Pedro: testar peso real na Fase 1 (produção); rodar o sync-app num Android real com Health Connect (`expo prebuild` + `expo run:android`) e decidir sobre o merge da Fase 2 depois disso. Próximo passo de desenvolvimento: Fase 3 (Analytics core + Dashboard real), mas só depois da Fase 2 estar "pronta" pelo critério dela.

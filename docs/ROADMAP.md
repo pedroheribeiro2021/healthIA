@@ -22,11 +22,12 @@ Dados manuais e dashboard vêm antes do sync automático — valor desde a prime
 **Pronto quando:** registrar peso pelo celular na rua e ver o gráfico atualizado; linhas correspondentes em raw_records e health_events.
 **Status:** mergeado em `main` e em produção (`healthia-six.vercel.app`), deploy confirmado `READY`. Falta só o teste real de Pedro pelo celular (ver `notas/Pendencias.md`) — decisão deliberada de não simular esse teste a partir do dev server, já que `raw_records`/`health_events` são append-only (sem DELETE) e qualquer registro de teste ficaria permanente na base de produção.
 
-## Fase 2 — Sync automático (Health Connect)
-- sync-app Expo: permissões Health Connect, leitura de sono/treinos/FC/HRV/passos/peso, fila local, envio em lote, sync incremental + background.
-- `POST /api/v1/sync/batch` idempotente; normalizers do Health Connect para todos os tipos lidos.
+## Fase 2 — Sync automático (Health Connect) — implementação em 2026-07-20, ver notas/Registro-de-Sessoes.md
+- sync-app Expo: permissões Health Connect, leitura de sono/treinos/FC/HRV/passos/peso/composição corporal/hidratação/refeição, fila local (expo-sqlite), envio em lote, sync manual + tentativa de background. ✅ código; ⏳ build/teste num Android real (Health Connect exige dev client, não roda no Expo Go).
+- `POST /api/v1/sync/batch` idempotente; normalizers do Health Connect para os 9 tipos lidos. ✅ implementado e testado (unit, repositório fake).
 
 **Pronto quando:** uma noite de sono e um treino do relógio aparecem como health_events sem intervenção manual.
+**Status:** lado servidor (rota + normalizers) testado e verde. sync-app scaffolded e com `tsc --noEmit` limpo, mas **não testado em dispositivo real** — não há como simular Health Connect neste ambiente. Falta: `expo prebuild`/`expo run:android` no aparelho do Pedro, autorizar as permissões, validar que sono/treino real aparecem em `health_events`. Branch `fase-2-sync`, não mergeada em `main`.
 
 ## Fase 3 — Analytics core + Dashboard real
 - Catálogo de métricas; calculators de sono, FC repouso, HRV, carga, peso; `daily_summary`; Recovery Score v1; TrendAnalyzer; Vercel Cron diário.
