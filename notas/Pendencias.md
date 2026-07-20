@@ -3,7 +3,16 @@
 ## Ação do Pedro
 
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado.
-- [ ] **Testar a Fase 1 no celular, em produção** (depois do deploy): abrir o PWA, registrar um peso real pela rua e conferir se o gráfico atualiza. Esse é o critério de "pronto" do roadmap — deliberadamente não simulado a partir do dev server nesta sessão, porque `raw_records`/`health_events` são append-only (sem DELETE) e um registro de teste ficaria permanente na base de produção.
+- [ ] **Testar a Fase 1 no celular, em produção** — só depois de decidir sobre o merge de `fase-1-ingestao` em `main` (ver abaixo). Abrir o PWA, registrar um peso real pela rua e conferir se o gráfico atualiza. Deliberadamente não simulado a partir do dev server, porque `raw_records`/`health_events` são append-only (sem DELETE) e um registro de teste ficaria permanente na base de produção.
+- [ ] **Decidir sobre o merge de `fase-1-ingestao` em `main`.** Está pronta, testada e com deploy validado (preview), mas ainda não mergeada — produção (`main`) segue só com o fechamento da Fase 0.
+- [ ] **Reautorizar o escopo da integração MCP da Vercel** (claude.ai → Configurações → Conectores → Vercel) para incluir o projeto `healthia` — hoje `list_projects`/`list_teams` da integração não o enxergam (só o dashboard via sessão de browser funciona), provavelmente porque o projeto não estava no escopo concedido quando a integração foi conectada.
+
+## Resolvido em 2026-07-20 (3) — Bug real: Root Directory da Vercel nunca foi salvo
+
+- [x] **Causa raiz do erro "Couldn't find any `pages` or `app` directory" (e depois "No Next.js version detected") na Vercel**: o campo **Root Directory** do projeto (Settings → Build and Deployment) estava **vazio** — nunca tinha sido salvo como `web`, apesar do app estar dentro de `web/` desde a Fase 0. Builds anteriores só "funcionavam" porque a Vercel tem um heurístico de auto-detecção de framework que às vezes encontrava o Next.js em `web/` mesmo com Root Directory vazio, mascarando o problema; um redeploy sem cache (ou com o cache de dependências indo por um caminho diferente) expunha a inconsistência de formas diferentes a cada tentativa (ora "swc missing" + "couldn't find app directory", ora "No Next.js version detected").
+- [x] Diagnóstico incluiu uma pista falsa: um bug de pipe do `grep | wc -l` neste ambiente Bash (Windows/Git Bash) fez parecer que o `package-lock.json` tinha perdido as entradas `@next/swc-*` depois de `npm install recharts` — na real, o lockfile sempre esteve correto (confirmado via Python e via `rm -rf node_modules && npm ci && npm run build` limpo, sem nenhum warning). Lição registrada: não confiar em `grep -o ... | wc -l`/`sort -u` neste ambiente sem checar com uma ferramenta alternativa (Python, ou `grep -c` direto).
+- [x] Corrigido preenchendo `web` no campo Root Directory e clicando Save (confirmado "Root directory updated" + persistência após reload). Redeploy de `fase-1-ingestao` (preview) e de `main` (produção) confirmados **Ready** depois da correção — build real de ~40-60s, sem nenhum warning de lockfile.
+- [x] Adicionado `.github/workflows/ci.yml`: roda `npm ci` (não `npm install`) + lint/typecheck/test/build em todo push para `main` e toda pull request — teria pego esse tipo de inconsistência de build antes do deploy.
 
 ## Resolvido em 2026-07-20 (2) — Fase 1: ingestão manual + pipeline raw→events + PWA
 

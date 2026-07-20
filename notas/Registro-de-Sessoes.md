@@ -177,3 +177,22 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - Branch `fase-1-ingestao` criada e commitada; **ainda não mergeada em `main` nem enviada ao GitHub** — push/merge/deploy ficam pendentes de confirmação do Pedro (deploy automático na Vercel dispara a partir do push).
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — Pedro: revisar o código, decidir sobre merge/push (dispara deploy), depois testar o registro de peso pelo celular em produção. Próximo passo de desenvolvimento: Fase 2 (sync automático via Health Connect).
+
+---
+
+## 2026-07-20 (3) — Bug real: deploy da Vercel quebrado por Root Directory nunca salvo
+
+**Objetivo:** o push da Fase 1 (`fase-1-ingestao`) e do fechamento da Fase 0 (`main`) quebrou o build na Vercel — investigar e corrigir.
+
+**Realizado:**
+- Primeira hipótese (errada): que `npm install recharts` tinha corrompido o `package-lock.json`, removendo as entradas `@next/swc-*` necessárias pro build Linux da Vercel. Descartada depois de descobrir que o `grep -o ... | wc -l`/`sort -u` usado pra checar o lockfile dá **falso negativo** neste ambiente Bash (Windows/Git Bash) — confirmado via Python que o lockfile sempre teve as 8 plataformas corretas, e via `rm -rf node_modules && npm ci && npm run build` limpo (idêntico ao que a Vercel roda) que build e lockfile estavam sempre saudáveis.
+- Causa raiz real, encontrada inspecionando o dashboard da Vercel pelo browser (a integração MCP não enxerga o projeto `healthia` — ver Pendencias.md): o campo **Root Directory** (Settings → Build and Deployment) estava **vazio**, nunca tinha sido salvo como `web`. A Vercel tem um heurístico de auto-detecção de framework que às vezes achava o Next.js em `web/` mesmo assim, mascarando o bug em builds anteriores; sem esse heurístico funcionar (ou com cache indo por outro caminho), o erro mudava de cara a cada tentativa — ora "couldn't find app directory", ora "No Next.js version detected" — mas a causa era sempre a mesma configuração ausente.
+- Corrigido preenchendo `web` e salvando (confirmado com reload completo da página que persistiu). Redeploy de `fase-1-ingestao` (preview, ~59s) e de `main`/produção (~39s) confirmados **Ready**, sem nenhum warning de lockfile.
+- Adicionado `.github/workflows/ci.yml` (rodando `npm ci`, igual à Vercel, + lint/typecheck/test/build) a pedido do Pedro, pra pegar esse tipo de problema antes do deploy.
+- Push de `main` e `fase-1-ingestao` feito (bloqueado inicialmente pelo classificador de modo automático do Claude Code para `git push`; destravado depois de confirmação explícita do Pedro no chat).
+
+**Decisões:**
+- Registrado como aprendizado de ferramenta: não confiar em `grep -o ... | wc -l` / `| sort -u` neste ambiente Bash — usar Python ou `grep -c` direto para contagens/verificações de conteúdo de arquivo.
+- MCP da Vercel não enxerga o projeto `healthia` (`list_projects` não retorna) mesmo com `list_teams` funcionando — escopo da integração, não corrigível por ferramenta; só o dashboard via sessão de browser do Pedro funciona. Fica pendência dele reautorizar o escopo.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — decidir sobre merge de `fase-1-ingestao` em `main`, depois testar registro de peso real pelo celular.
