@@ -3,9 +3,13 @@
 ## Ação do Pedro
 
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado.
-- [ ] **Testar a Fase 1 no celular, em produção.** Abrir o PWA (já em produção), registrar um peso real pela rua e conferir se o gráfico atualiza. Deliberadamente não simulado a partir do dev server, porque `raw_records`/`health_events` são append-only (sem DELETE) e um registro de teste ficaria permanente na base de produção.
-- [ ] **Rodar o sync-app num Android real com Health Connect** (Samsung Health → Health Connect ativado, Galaxy Watch 8 sincronizando): `cd sync-app && npm install`, copiar `.env.example` pra `.env` com as chaves do Supabase + `EXPO_PUBLIC_API_BASE_URL`, `npx expo prebuild -p android`, `npx expo run:android`. Health Connect não roda no Expo Go — precisa gerar um dev client. Sem acesso a um Android real ou emulador com Health Connect neste ambiente, essa parte só foi validada até `tsc --noEmit`; o app nunca rodou de fato.
+- [ ] **Instalar o sync-app no Android via EAS Build** e rodar o primeiro sync real com Health Connect + Samsung Health — guia passo a passo publicado como artefato nesta sessão (build na nuvem, sem precisar de Android Studio local).
 - [ ] **Decidir sobre o merge de `fase-2-sync` em `main`** depois do teste acima confirmar que sono/treino real aparecem em `health_events` (critério de "pronto" da Fase 2).
+
+## Resolvido em 2026-07-20 (5) — Fase 1: peso real lançado
+
+- [x] Pedro lançou um peso real pelo PWA em produção — critério de "pronto" da Fase 1 confirmado. Fase 1 considerada **pronta** de ponta a ponta.
+- [x] `sync-app/eas.json` adicionado (perfis `development`/`preview`/`production`) — caminho de build na nuvem (EAS) escolhido em vez de `expo run:android` local, porque não exige Android Studio/SDK na máquina do Pedro.
 
 ## Resolvido em 2026-07-20 (4) — Fase 1 mergeada em produção + Fase 2 (sync automático) implementada
 
