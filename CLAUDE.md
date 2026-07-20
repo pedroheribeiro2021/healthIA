@@ -79,8 +79,11 @@ npx supabase migration new <nome>           # nova migration
 npx supabase db push                        # aplica migrations no projeto
 git push                                    # deploy automático na Vercel
 
-# sync-app
-cd sync-app && npm install && npx expo start
+# sync-app (Health Connect exige dev client — Expo Go não roda módulos nativos)
+cd sync-app && npm install
+cp .env.example .env                        # preencher com as mesmas chaves do web/.env.local + EXPO_PUBLIC_API_BASE_URL
+npx expo prebuild -p android
+npx expo run:android                        # builda e instala o dev client no aparelho/emulador
 ```
 
 ## Convenções
