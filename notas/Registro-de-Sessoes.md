@@ -152,3 +152,47 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - Grants não incluem `DELETE` para `authenticated` — coerente com o princípio de fonte da verdade imutável (`raw_records`/`health_events` são append-only via trigger; as demais tabelas não têm caso de uso de exclusão pelo cliente hoje).
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — só falta o Pedro trocar a senha temporária `123456` por uma definitiva. Próximo passo de desenvolvimento: Fase 1 (ingestão manual + pipeline raw→events + PWA instalável).
+
+---
+
+## 2026-07-20 (2) — Fase 1: ingestão manual + pipeline raw→events + PWA
+
+**Objetivo:** implementar a Fase 1 do roadmap — `POST /api/v1/events/manual`, pipeline raw_records → Normalization → health_events, formulário de registro rápido e gráfico de peso no PWA.
+
+**Realizado:**
+- Antes de começar: commitados os arquivos da Fase 0 que a sessão anterior tinha aplicado no Supabase mas deixado sem commit (migrations 004/005 + `notas/`), e feito merge (`--ff-only`, local) de `fase-0-fundacao` em `main`. Branch `fase-1-ingestao` criada a partir de `main`.
+- `domain/manualEntry.ts`: schemas zod para os 4 tipos de lançamento manual (peso, hidratação, refeição, nota) + mapeamento tipo → `record_type` (`WeightEntry`/`HydrationEntry`/`MealEntry`/`NoteEntry`).
+- `normalization/payloadHash.ts`: sha256 do payload canônico (chaves ordenadas), para dedup determinístico.
+- `normalization/manual.ts`: `buildManualRawRecord` (monta o `NewRawRecord` a partir do input validado) + 4 funções `normalize*Entry` (raw → health_event).
+- `normalization/registry.ts`: contrato do Normalization Engine — `normalize(raw)` resolvido por `source:record_type`, documentado em ARCHITECTURE.md.
+- `normalization/ingest.ts`: orquestração da pipeline completa (insere raw_record → normaliza → insere health_events → marca `norm_status`), reaproveitável por sync/admin em fases futuras. Erro de normalização não descarta o raw_record (fica `error`, pronto pra reprocesso).
+- `app/api/v1/events/manual/route.ts`: rota REST thin (só parse/validação + chamada da pipeline).
+- `modules/registro/QuickEntryForm.tsx` (client, seletor de tipo + campos dinâmicos) e `WeightChart.tsx` (Recharts, adicionado como dependência — já previsto no CLAUDE.md mas não instalado ainda). Plugados em `app/page.tsx`, que agora busca `health_events` de peso via `eventRepository` (Server Component) em vez do placeholder da Fase 0.
+- 27 testes (vitest) cobrindo schemas, hash, normalizers e a orquestração de ingestão (com repositório fake em memória — sem tocar o Supabase real). `npm run typecheck`, `npm run lint` e `npm run build` verdes.
+
+**Decisões:**
+- **Dedup de lançamento manual usa `external_id = payload_hash`.** `raw_records` tem `unique nulls not distinct (source, external_id)` — como lançamentos manuais não têm um id externo natural, deixar `external_id` nulo faria o **segundo** lançamento manual de qualquer tipo colidir com o primeiro (Postgres trata dois `NULL` como iguais nesse tipo de constraint), travando a ingestão manual depois do primeiro registro. Usar o hash do payload como `external_id` resolve isso e mantém o dedup por conteúdo pretendido (reenvio idêntico = duplicate).
+- **Orquestração raw→events mora em `normalization/ingest.ts`**, não em `app/api/`: a rota fica thin (CLAUDE.md) e a função é reaproveitável tal como está pelo endpoint de sync da Fase 2 e por um futuro `/admin/reprocess`.
+- **Não foi feito teste de submissão real no browser contra o Supabase de produção.** `raw_records`/`health_events` são append-only (sem policy de DELETE) — qualquer lançamento de teste ficaria permanente na base real do Pedro. Validado em vez disso: suíte de testes automatizados (normalização/hash/orquestração com repositório fake) + build/typecheck/lint verdes + verificação visual no browser contra produção real (login, leitura de `health_events` vazia funcionando, os 4 formulários renderizando corretamente) sem clicar em "Registrar". O teste de ponta a ponta com dado real (registrar peso pela rua) fica para o Pedro — é literalmente o critério de "pronto" do roadmap.
+- Branch `fase-1-ingestao` criada e commitada; **ainda não mergeada em `main` nem enviada ao GitHub** — push/merge/deploy ficam pendentes de confirmação do Pedro (deploy automático na Vercel dispara a partir do push).
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — Pedro: revisar o código, decidir sobre merge/push (dispara deploy), depois testar o registro de peso pelo celular em produção. Próximo passo de desenvolvimento: Fase 2 (sync automático via Health Connect).
+
+---
+
+## 2026-07-20 (3) — Bug real: deploy da Vercel quebrado por Root Directory nunca salvo
+
+**Objetivo:** o push da Fase 1 (`fase-1-ingestao`) e do fechamento da Fase 0 (`main`) quebrou o build na Vercel — investigar e corrigir.
+
+**Realizado:**
+- Primeira hipótese (errada): que `npm install recharts` tinha corrompido o `package-lock.json`, removendo as entradas `@next/swc-*` necessárias pro build Linux da Vercel. Descartada depois de descobrir que o `grep -o ... | wc -l`/`sort -u` usado pra checar o lockfile dá **falso negativo** neste ambiente Bash (Windows/Git Bash) — confirmado via Python que o lockfile sempre teve as 8 plataformas corretas, e via `rm -rf node_modules && npm ci && npm run build` limpo (idêntico ao que a Vercel roda) que build e lockfile estavam sempre saudáveis.
+- Causa raiz real, encontrada inspecionando o dashboard da Vercel pelo browser (a integração MCP não enxerga o projeto `healthia` — ver Pendencias.md): o campo **Root Directory** (Settings → Build and Deployment) estava **vazio**, nunca tinha sido salvo como `web`. A Vercel tem um heurístico de auto-detecção de framework que às vezes achava o Next.js em `web/` mesmo assim, mascarando o bug em builds anteriores; sem esse heurístico funcionar (ou com cache indo por outro caminho), o erro mudava de cara a cada tentativa — ora "couldn't find app directory", ora "No Next.js version detected" — mas a causa era sempre a mesma configuração ausente.
+- Corrigido preenchendo `web` e salvando (confirmado com reload completo da página que persistiu). Redeploy de `fase-1-ingestao` (preview, ~59s) e de `main`/produção (~39s) confirmados **Ready**, sem nenhum warning de lockfile.
+- Adicionado `.github/workflows/ci.yml` (rodando `npm ci`, igual à Vercel, + lint/typecheck/test/build) a pedido do Pedro, pra pegar esse tipo de problema antes do deploy.
+- Push de `main` e `fase-1-ingestao` feito (bloqueado inicialmente pelo classificador de modo automático do Claude Code para `git push`; destravado depois de confirmação explícita do Pedro no chat).
+
+**Decisões:**
+- Registrado como aprendizado de ferramenta: não confiar em `grep -o ... | wc -l` / `| sort -u` neste ambiente Bash — usar Python ou `grep -c` direto para contagens/verificações de conteúdo de arquivo.
+- MCP da Vercel não enxerga o projeto `healthia` (`list_projects` não retorna) mesmo com `list_teams` funcionando — escopo da integração, não corrigível por ferramenta; só o dashboard via sessão de browser do Pedro funciona. Fica pendência dele reautorizar o escopo.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — decidir sobre merge de `fase-1-ingestao` em `main`, depois testar registro de peso real pelo celular.
