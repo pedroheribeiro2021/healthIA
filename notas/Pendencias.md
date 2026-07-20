@@ -1,10 +1,20 @@
 # Pendências — HealthIA
 
-## Ação do Pedro (bloqueiam o "pronto" da Fase 0)
+## Ação do Pedro
 
-- [ ] **Supabase: expor o schema `healthia` na Data API** (Project Settings → API → Exposed schemas, adicionar `healthia` à lista). Sem isso, o PostgREST não atende `.schema("healthia")` e todas as chamadas do app aos repositórios falham (o app está no ar, mas login autenticado ainda vai falhar na leitura/escrita até isso ser feito). O schema e as tabelas já existem — só falta essa exposição.
-- [ ] **Supabase: criar a conta do Pedro** no projeto `rachaconta` (compartilhado). Hoje o projeto só tem ~95 usuários anônimos (de outros apps) — nenhuma conta com e-mail real. Criar via Dashboard → Authentication → Add user (e-mail + senha), ou por convite. A app não tem tela de cadastro de propósito.
-- [ ] **Supabase: restringir RLS ao UUID do Pedro.** Depois que a conta existir, trocar o corpo de `healthia.is_authorized()` (nova migration) para comparar `auth.uid()` com o UUID fixo do Pedro, em vez de só checar "autenticado e não anônimo". Hoje a policy já bloqueia os ~95 usuários anônimos de outros apps do projeto, mas ainda aceitaria qualquer outra conta real que viesse a existir nesse projeto compartilhado.
+- [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado.
+
+## Resolvido em 2026-07-20 — Fase 0 fechada: login ponta a ponta em produção
+
+- [x] **Supabase: schema `healthia` exposto na Data API** pelo Pedro (Project Settings → API → Exposed schemas).
+- [x] **Bug real encontrado e corrigido: faltavam os `GRANT` de schema/tabela para o role `authenticated`.** RLS por si só não basta — o Postgres exige `USAGE` no schema e privilégio na tabela antes mesmo de avaliar as policies. Nenhuma das migrations 001–004 tinha concedido isso (só `postgres`, dono das tabelas, tinha acesso); toda chamada autenticada da API falharia com `permission denied for schema healthia` mesmo com o schema exposto e a RLS correta. Corrigido na migration `20260720120000_healthia_005_grant_authenticated.sql` (`grant usage on schema healthia to authenticated` + `grant select, insert, update on all tables...`, sem `delete` — consistente com o princípio de fonte da verdade imutável).
+- [x] **Login validado de ponta a ponta em produção**: testado via `curl` (token emitido para o UUID certo, leitura autenticada em `healthia.health_events` retornando `200`) e via browser real em `https://healthia-six.vercel.app` — login com `pedro@mail.com`/`123456` redireciona para `/` e mostra "Sessão ativa: pedro@mail.com".
+- [x] Fase 0 (v2) considerada **pronta**: Supabase + Next.js + Vercel + auth funcionando em produção.
+
+## Resolvido em 2026-07-19 (2) — usuário real do Pedro + RLS travada no UUID dele
+
+- [x] **Supabase: conta do Pedro criada** — `pedro@mail.com`, senha temporária `123456`, UUID `3fe469a5-84c9-41ee-b207-83e48da8a80b`. Sem tool MCP dedicado para `auth.admin.createUser` (e sem `SUPABASE_SERVICE_ROLE_KEY` disponível localmente para chamar a Admin API), criado via `execute_sql` inserindo diretamente em `auth.users` + `auth.identities` (padrão documentado do Supabase para seed de usuário com senha: `crypt()`/`gen_salt('bf')` do pgcrypto, `instance_id` copiado de um usuário existente do projeto). Ação aditiva (INSERT), sem risco às ~97 contas de outros apps no projeto compartilhado.
+- [x] **RLS restrita ao UUID do Pedro** — migration `20260719190000_healthia_004_restrict_to_pedro_uuid.sql` aplicada (`healthia.is_authorized()` agora compara `auth.uid()` com o UUID fixo acima, em vez de só checar "autenticado e não anônimo"). `get_advisors` (security) segue mostrando WARN "Anonymous Access Policies" em todas as tabelas `healthia.*` — é falso positivo esperado: o linter do Supabase não enxerga o corpo da function `is_authorized()`, só vê que a policy é `to authenticated`; já estava documentado assim na migration 003.
 
 ## Resolvido em 2026-07-19 (sessão com Pedro logado no Vercel via browser)
 

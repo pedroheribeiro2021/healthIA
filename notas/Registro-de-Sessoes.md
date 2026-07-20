@@ -115,3 +115,40 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - Confirmado: a permissão MCP para a Vercel (`403 forbidden`) é um problema da integração/token, não da conta do Pedro — a sessão dele no browser tem acesso normal. Ferramentas MCP (`get_deployment`, `get_runtime_errors`, `list_projects`) continuam sem enxergar o projeto `healthia` mesmo depois disso; monitoramento de deploy/logs desse projeto por ora só funciona via browser.
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — falta expor o schema `healthia` na Data API do Supabase (Project Settings → API → Exposed schemas) e criar a conta real do Pedro no Supabase Auth para o login funcionar de ponta a ponta em produção. Depois disso, trocar `healthia.is_authorized()` para travar no `auth.uid()` do Pedro (nova migration).
+
+---
+
+## 2026-07-19 (6) — Usuário real do Pedro no Supabase Auth + RLS travada no UUID dele
+
+**Objetivo:** seguir as pendências de login — criar a conta real do Pedro (`pedro@mail.com` / senha temporária `123456`) e travar a RLS nela.
+
+**Realizado:**
+- Confirmado via `curl` direto no endpoint REST (`Accept-Profile: healthia`) que o schema `healthia` segue não exposto na Data API (`406 PGRST106 Invalid schema: healthia`) — continua ação exclusiva do Pedro via Dashboard, sem tool MCP equivalente. Pedro optou por fazer esse passo por conta própria depois.
+- Conta `pedro@mail.com` criada no projeto `rachaconta` via `execute_sql` (não existe tool MCP `auth.admin.createUser`, e `SUPABASE_SERVICE_ROLE_KEY` está vazia localmente) — INSERT direto em `auth.users` + `auth.identities` seguindo o padrão de seed documentado do Supabase (`pgcrypto`, `crypt()`/`gen_salt('bf')`). UUID resultante: `3fe469a5-84c9-41ee-b207-83e48da8a80b`.
+- Migration `web/supabase/migrations/20260719190000_healthia_004_restrict_to_pedro_uuid.sql` aplicada: `healthia.is_authorized()` agora compara `auth.uid()` com esse UUID fixo, fechando a brecha (documentada na migration 003) de aceitar qualquer conta real futura no projeto compartilhado.
+- `get_advisors` (security) revisado: os WARN "Anonymous Access Policies" nas tabelas `healthia.*` são falso positivo já esperado (linter não enxerga o corpo de `is_authorized()`) — nenhum achado novo.
+
+**Decisões:**
+- Criar usuário via SQL direto (em vez de esperar a Admin API/service_role) foi aceito porque é operação aditiva (INSERT) num projeto compartilhado, sem risco às contas de outros apps — diferente de expor schema, que é config de projeto e só existe via Dashboard.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — falta só o Pedro expor o schema `healthia` na Data API para o login funcionar de ponta a ponta em produção; depois, trocar a senha temporária `123456` por uma definitiva.
+
+---
+
+## 2026-07-20 — Fase 0 fechada: bug de GRANT faltante + login validado em produção
+
+**Objetivo:** confirmar que o login funciona de ponta a ponta em produção depois que o Pedro expôs o schema `healthia` na Data API.
+
+**Realizado:**
+- Reteste do endpoint REST com `Accept-Profile: healthia`: o erro mudou de `406 PGRST106 Invalid schema` para `401 permission denied for schema healthia` — sinal de que o schema já estava exposto, mas faltava outra coisa.
+- Investigado com `execute_sql` (`information_schema.role_table_grants` e `role_usage_grants`): **nenhuma migration anterior (001–004) tinha concedido `GRANT USAGE`/`SELECT`/`INSERT`/`UPDATE` no schema `healthia` para o role `authenticated`** — só `postgres` (dono das tabelas) tinha acesso. RLS por si só não é suficiente nesse caso: o Postgres verifica os grants de schema/tabela antes de sequer avaliar as policies. Esse era o bloqueador real, mascarado até agora pelo schema não estar exposto.
+- Corrigido com a migration `web/supabase/migrations/20260720120000_healthia_005_grant_authenticated.sql` (aplicada via `apply_migration`).
+- Validação de ponta a ponta:
+  - `curl` direto no Auth API com `pedro@mail.com`/`123456` → token emitido para o UUID certo; leitura autenticada em `healthia.health_events` com esse token → `200 []`.
+  - Browser real em `https://healthia-six.vercel.app/login`: login bem-sucedido, redireciona para `/`, mostra "Sessão ativa: pedro@mail.com" (dashboard vazio, aguardando Fase 3 — comportamento esperado).
+- **Fase 0 (v2) considerada pronta.**
+
+**Decisões:**
+- Grants não incluem `DELETE` para `authenticated` — coerente com o princípio de fonte da verdade imutável (`raw_records`/`health_events` são append-only via trigger; as demais tabelas não têm caso de uso de exclusão pelo cliente hoje).
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — só falta o Pedro trocar a senha temporária `123456` por uma definitiva. Próximo passo de desenvolvimento: Fase 1 (ingestão manual + pipeline raw→events + PWA instalável).
