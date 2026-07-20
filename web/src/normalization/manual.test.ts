@@ -124,7 +124,7 @@ describe("normalize (registry) — fonte manual", () => {
   });
 
   it("lança erro para (source, recordType) sem normalizer registrado", () => {
-    const raw = rawRecordFrom({ source: "health_connect", recordType: "SleepSession" });
+    const raw = rawRecordFrom({ source: "bioimpedance", recordType: "SomeUnknownType" });
 
     expect(() => normalize(raw)).toThrow(/sem normalizer registrado/);
   });

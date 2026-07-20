@@ -20,7 +20,7 @@ Dados manuais e dashboard vêm antes do sync automático — valor desde a prime
 - PWA: formulário de registro rápido + gráfico de peso. Instalável no celular (manifest + ícone). ✅ `modules/registro/`.
 
 **Pronto quando:** registrar peso pelo celular na rua e ver o gráfico atualizado; linhas correspondentes em raw_records e health_events.
-**Status:** código implementado, testado (unit + typecheck + build + verificação visual em produção) e mergeado. Falta só o teste real de Pedro pelo celular (ver `notas/Pendencias.md`) — decisão deliberada de não simular esse teste a partir do dev server, já que `raw_records`/`health_events` são append-only (sem DELETE) e qualquer registro de teste ficaria permanente na base de produção.
+**Status:** mergeado em `main` e em produção (`healthia-six.vercel.app`), deploy confirmado `READY`. Falta só o teste real de Pedro pelo celular (ver `notas/Pendencias.md`) — decisão deliberada de não simular esse teste a partir do dev server, já que `raw_records`/`health_events` são append-only (sem DELETE) e qualquer registro de teste ficaria permanente na base de produção.
 
 ## Fase 2 — Sync automático (Health Connect)
 - sync-app Expo: permissões Health Connect, leitura de sono/treinos/FC/HRV/passos/peso, fila local, envio em lote, sync incremental + background.

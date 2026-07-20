@@ -48,8 +48,12 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// Rotas de API ficam de fora: autenticam a própria requisição (cookie ou
+// Authorization: Bearer, ver repositories/supabase/auth.ts) e respondem
+// 401 em JSON — redirecionar uma chamada de API para /login não faz
+// sentido pra um cliente não-navegador (ex.: sync-app).
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|sw.js).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icons/|sw.js|api/).*)",
   ],
 };
