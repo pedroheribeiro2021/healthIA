@@ -1,3 +1,10 @@
+import type {
+  DailySummary,
+  LocalDay,
+  MetricSnapshot,
+  NewDailySummary,
+  NewMetricSnapshot,
+} from "./analytics";
 import type { EventType, HealthEvent, NewHealthEvent } from "./healthEvent";
 import type { NewRawRecord, RawRecord } from "./rawRecord";
 
@@ -23,4 +30,28 @@ export interface EventRepository {
     from?: string;
     to?: string;
   }): Promise<HealthEvent[]>;
+}
+
+/**
+ * Camada derivada e recalculável (docs/DATA_MODEL.md): metric_snapshots +
+ * daily_summary. Implementação concreta em repositories/metricRepository.ts.
+ */
+export interface MetricRepository {
+  upsertMetricSnapshots(
+    snapshots: NewMetricSnapshot[],
+  ): Promise<MetricSnapshot[]>;
+  listMetricSnapshots(params: {
+    metricId?: string;
+    from?: string;
+    to?: string;
+    algoVersion?: string;
+  }): Promise<MetricSnapshot[]>;
+
+  upsertDailySummary(summary: NewDailySummary): Promise<DailySummary>;
+  getDailySummary(day: LocalDay): Promise<DailySummary | null>;
+  getLatestDailySummary(): Promise<DailySummary | null>;
+  listDailySummaries(params: {
+    from: LocalDay;
+    to: LocalDay;
+  }): Promise<DailySummary[]>;
 }

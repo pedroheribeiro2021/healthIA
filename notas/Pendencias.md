@@ -4,6 +4,17 @@
 
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
 - [ ] **Confirmar merge de `fase-2-sync` em `main`** — bloqueado pelo classificador de auto mode do Claude Code (ação em `main` + dispara deploy de produção), pendente de confirmação explícita do Pedro.
+- [ ] **Configurar `CRON_SECRET` no projeto Vercel** (Settings → Environment Variables) para `GET /api/v1/cron/daily` funcionar em produção — a Vercel injeta `Authorization: Bearer $CRON_SECRET` automaticamente nas chamadas do Vercel Cron quando essa env var existe. Até configurar, `daily_summary` não recalcula sozinho; dá pra recalcular sob demanda via `POST /api/v1/admin/recompute`.
+- [ ] **Confirmar merge de `fase-3-analytics` em `main`** — mesma trava do classificador de auto mode (ação em `main` + dispara deploy), pendente de confirmação explícita do Pedro.
+
+## Resolvido em 2026-07-21 (2) — Fase 3: Analytics core + Dashboard real
+
+- [x] Catálogo de métricas + 6 calculators (sono, FC repouso, HRV, carga de treino/ACWR, peso, Recovery Score) — cada um função pura com teste unitário. `rollup.ts` (health_events → metric_snapshots) e `analyticsService.ts` (`recomputeDay`/`recomputeRange`, popula `daily_summary`). `trendAnalyzer.ts` e `comparisonEngine.ts` (semana atual × anterior). 116 testes no total.
+- [x] `MetricRepository` (interface em `domain/repositories.ts` + implementação Supabase em `repositories/metricRepository.ts`) — as tabelas `metric_snapshots`/`daily_summary` já existiam desde a migration 001 da Fase 0, nenhuma migration nova precisou ser criada.
+- [x] Rotas: `GET /api/v1/metrics/[metricId]`, `GET /api/v1/summary/daily`, `POST /api/v1/admin/recompute` (reprocesso manual) e `GET /api/v1/cron/daily` (autenticado via `service_role` + `CRON_SECRET`, agendado em `web/vercel.json` para 09:00 UTC = 06:00 America/Sao_Paulo).
+- [x] Dashboard: `/` (visão geral — `OverviewCards` + `RecoveryTrendChart`), `/sono` (`SleepDurationChart` + comparativo semanal), `/exercicios` (`TrainingLoadChart` + `WorkoutList`); o formulário de registro rápido da Fase 1 se mudou de `/` para `/registro`. `NavBar` fixa no rodapé.
+- [x] `npm test` (116), `npm run typecheck`, `npm run lint`, `npm run build` verdes. Verificado no browser (`npm run dev` local contra o Supabase de produção, logado como `pedro@mail.com`): as três telas renderizam com dado real já computado (Recovery 89, Sono 7h28, tendência "estável", treinos com carga/ACWR).
+- [x] **Fase 3 considerada pronta** pelo critério do roadmap (`docs/ROADMAP.md` atualizado).
 
 ## Resolvido em 2026-07-21 — Fase 2 validada em dispositivo real; bug de normalização encontrado e corrigido
 
@@ -65,9 +76,9 @@
 
 - Schema Supabase dedicado `healthia` dentro do projeto `rachaconta` (não um projeto Supabase novo — org já estava no limite de 2 projetos free). Detalhe em `notas/ADR/ADR-002-schema-compartilhado-supabase.md`.
 
-## Depois (Fase 3)
+## Depois (Fase 4)
 
-- [ ] Fase 3 — Analytics core + Dashboard real (catálogo de métricas, calculators de sono/FC repouso/HRV/carga/peso, `daily_summary`, Recovery Score v1, TrendAnalyzer, Vercel Cron diário, dashboard com visão geral + módulos Sono/Exercícios).
+- [ ] Fase 4 — Correlações, Insights e Recomendações (CorrelationFinder, Insight Engine com 7 regras iniciais, Recommendation Engine com priorização, alertas no dashboard).
 
 ## Decisões pendentes
 
