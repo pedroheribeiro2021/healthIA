@@ -2,9 +2,17 @@
 
 ## Ação do Pedro
 
-- [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado.
-- [ ] **Instalar o sync-app no Android via EAS Build** e rodar o primeiro sync real com Health Connect + Samsung Health — guia passo a passo publicado como artefato nesta sessão (build na nuvem, sem precisar de Android Studio local).
-- [ ] **Decidir sobre o merge de `fase-2-sync` em `main`** depois do teste acima confirmar que sono/treino real aparecem em `health_events` (critério de "pronto" da Fase 2).
+- [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
+- [ ] **Confirmar merge de `fase-2-sync` em `main`** — bloqueado pelo classificador de auto mode do Claude Code (ação em `main` + dispara deploy de produção), pendente de confirmação explícita do Pedro.
+
+## Resolvido em 2026-07-21 — Fase 2 validada em dispositivo real; bug de normalização encontrado e corrigido
+
+- [x] **Build development do sync-app gerado via EAS Build (nuvem)** e instalado no Android real do Pedro (Galaxy S/Note + Galaxy Watch 8 via Samsung Health). Dois bugs de build corrigidos no caminho: `package-lock.json` fora de sincronia com `package.json` (`npm ci` falhava) e `expo-dev-client` faltando como dependência declarada (funcionava local mas não num `npm ci` limpo na nuvem).
+- [x] **Erro de Gradle `:app:checkDebugAarMetadata`**: `compileSdkVersion`/`targetSdkVersion` estavam fixados em 35 via `expo-build-properties`, mas dependências do Expo SDK 57 (`androidx.browser` 1.9.0, `androidx.core`/`core-ktx` 1.17.0) exigem `compileSdk` ≥ 36. Corrigido subindo os dois para 36.
+- [x] **Primeiro sync real confirmado**: login com `pedro@mail.com`, permissões do Health Connect concedidas, "Sincronizar agora" trouxe 200 registros (sono, treino, FC, passos, peso) do Galaxy Watch 8 até o Supabase.
+- [x] **Bug real de normalização encontrado via dado de produção**: os schemas zod de `web/src/domain/healthConnect.ts` tratavam `metadata.clientRecordId`, `title`, `notes`, `mealType` e `name` como `.optional()` (aceita `undefined`), mas o Health Connect nativo do Android manda `null` explícito para esses campos quando ausentes, não omite a chave. Resultado: 115 dos 200 primeiros registros (100% de SleepSession/ExerciseSession/HeartRate, 62/147 de Steps) caíram em `raw_records` com `norm_status='error'` e nunca viraram `health_events` — mas o dado bruto não foi perdido (fonte da verdade imutável), só a promoção falhou. Corrigido trocando `.optional()` por `.nullable().optional()` nesses campos; teste de regressão adicionado em `healthConnect.test.ts` com o payload real (`null`) que causava a falha.
+- [x] **Reprocessamento dos 115 registros já corrigidos**: sem rota admin de reprocesso ainda implementada, rodado um script pontual (`npx tsx`, deletado depois de usar) que reaproveitou o `normalize()` e o `EventRepository` reais, autenticado como `pedro@mail.com` (sem precisar de `SUPABASE_SERVICE_ROLE_KEY`, que segue vazia localmente). 115/115 reprocessados com sucesso — `health_events` agora reflete os 200 registros originais (18 sleep_session, 17 workout, 22181 heart_rate — cada sessão de FC contínua vira várias amostras —, 147 steps).
+- [x] **Fase 2 considerada pronta** pelo critério do roadmap (`docs/ROADMAP.md` atualizado). PR #3 (`fase-2-sync` → `main`) atualizado com o resumo completo.
 
 ## Resolvido em 2026-07-20 (5) — Fase 1: peso real lançado
 
@@ -57,9 +65,9 @@
 
 - Schema Supabase dedicado `healthia` dentro do projeto `rachaconta` (não um projeto Supabase novo — org já estava no limite de 2 projetos free). Detalhe em `notas/ADR/ADR-002-schema-compartilhado-supabase.md`.
 
-## Depois (Fase 2)
+## Depois (Fase 3)
 
-- [ ] Fase 2 — sync automático (Health Connect)
+- [ ] Fase 3 — Analytics core + Dashboard real (catálogo de métricas, calculators de sono/FC repouso/HRV/carga/peso, `daily_summary`, Recovery Score v1, TrendAnalyzer, Vercel Cron diário, dashboard com visão geral + módulos Sono/Exercícios).
 
 ## Decisões pendentes
 
