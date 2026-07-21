@@ -5,7 +5,10 @@ import type {
   NewDailySummary,
   NewMetricSnapshot,
 } from "./analytics";
+import type { Goal } from "./goals";
 import type { EventType, HealthEvent, NewHealthEvent } from "./healthEvent";
+import type { Insight, NewInsight } from "./insights";
+import type { NewRecommendation, Recommendation } from "./recommendations";
 import type { NewRawRecord, RawRecord } from "./rawRecord";
 
 export type InsertRawRecordResult =
@@ -54,4 +57,46 @@ export interface MetricRepository {
     from: LocalDay;
     to: LocalDay;
   }): Promise<DailySummary[]>;
+}
+
+/**
+ * Leitura de metas (docs/DATA_MODEL.md `goals`). Só o necessário pra Fase 4
+ * (regras de insight lerem metas ativas) — criação de metas é Fase 6.
+ * Implementação concreta em repositories/goalRepository.ts.
+ */
+export interface GoalRepository {
+  listActiveGoals(): Promise<Goal[]>;
+}
+
+/**
+ * Camada derivada e recalculável (docs/DATA_MODEL.md `insights`).
+ * Implementação concreta em repositories/insightRepository.ts.
+ */
+export interface InsightRepository {
+  insertInsight(insight: NewInsight): Promise<Insight>;
+  // Usado pelo insightService pra não duplicar o mesmo insight em
+  // recomputes repetidos do mesmo dia (a tabela não tem unique constraint —
+  // ver ADR da Fase 4).
+  findActiveByRuleAndPeriod(params: {
+    ruleId: string;
+    periodStart: string;
+    periodEnd: string;
+  }): Promise<Insight | null>;
+  listActive(params: { from: string; to: string }): Promise<Insight[]>;
+}
+
+/**
+ * Camada derivada e recalculável (docs/DATA_MODEL.md `recommendations`).
+ * Implementação concreta em repositories/recommendationRepository.ts.
+ */
+export interface RecommendationRepository {
+  insertRecommendation(
+    recommendation: NewRecommendation,
+  ): Promise<Recommendation>;
+  findOpenByInsightId(insightId: number): Promise<Recommendation | null>;
+  listByStatus(status: Recommendation["status"]): Promise<Recommendation[]>;
+  updateStatus(
+    id: number,
+    status: Recommendation["status"],
+  ): Promise<Recommendation>;
 }

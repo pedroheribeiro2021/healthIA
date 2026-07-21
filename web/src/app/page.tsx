@@ -1,9 +1,11 @@
 import { LogoutButton } from "@/components/LogoutButton";
 import { getMetricSeries } from "@/engines/analytics/queries";
 import { addDays, todayLocalDay } from "@/engines/analytics/period";
+import { AlertBanner } from "@/modules/insights/AlertBanner";
 import { OverviewCards } from "@/modules/dashboard/OverviewCards";
 import { RecoveryTrendChart } from "@/modules/dashboard/RecoveryTrendChart";
 import { createSupabaseMetricRepository } from "@/repositories/metricRepository";
+import { createSupabaseRecommendationRepository } from "@/repositories/recommendationRepository";
 import { createSupabaseServerClient } from "@/repositories/supabase/serverClient";
 
 // Critério de "pronto" da Fase 3 (docs/ROADMAP.md): abrir aqui de manhã
@@ -17,14 +19,19 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   const metricRepo = await createSupabaseMetricRepository();
+  const recommendationRepo = await createSupabaseRecommendationRepository();
   const today = todayLocalDay();
-  const summary = await metricRepo.getLatestDailySummary();
-  const { series: recoverySeries } = await getMetricSeries(
-    metricRepo,
-    "recovery.score.daily",
-    addDays(today, -29),
-    today,
-  );
+  const [summary, { series: recoverySeries }, openRecommendations] =
+    await Promise.all([
+      metricRepo.getLatestDailySummary(),
+      getMetricSeries(
+        metricRepo,
+        "recovery.score.daily",
+        addDays(today, -29),
+        today,
+      ),
+      recommendationRepo.listByStatus("open"),
+    ]);
 
   return (
     <main className="flex flex-1 flex-col bg-neutral-50 pb-20 dark:bg-neutral-950">
@@ -44,6 +51,7 @@ export default async function Home() {
             </>
           )}
         </p>
+        <AlertBanner openCount={openRecommendations.length} />
         <OverviewCards summary={summary} />
         <RecoveryTrendChart series={recoverySeries} />
       </div>

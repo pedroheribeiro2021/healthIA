@@ -3,9 +3,20 @@
 ## Ação do Pedro
 
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
-- [ ] **Confirmar merge de `fase-2-sync` em `main`** — bloqueado pelo classificador de auto mode do Claude Code (ação em `main` + dispara deploy de produção), pendente de confirmação explícita do Pedro.
-- [ ] **Configurar `CRON_SECRET` no projeto Vercel** (Settings → Environment Variables) para `GET /api/v1/cron/daily` funcionar em produção — a Vercel injeta `Authorization: Bearer $CRON_SECRET` automaticamente nas chamadas do Vercel Cron quando essa env var existe. Até configurar, `daily_summary` não recalcula sozinho; dá pra recalcular sob demanda via `POST /api/v1/admin/recompute`.
-- [ ] **Confirmar merge de `fase-3-analytics` em `main`** — mesma trava do classificador de auto mode (ação em `main` + dispara deploy), pendente de confirmação explícita do Pedro.
+- [ ] **Confirmar merge de `fase-4-insights` em `main`** — mesma trava do classificador de auto mode do Claude Code (ação em `main` + dispara deploy de produção), pendente de confirmação explícita do Pedro.
+
+## Resolvido em 2026-07-21 (3) — Fase 4: Correlações, Insights e Recomendações
+
+- [x] `engines/analytics/correlationFinder.ts` (Spearman + significância via valor crítico de t por grau de liberdade, `stats/basic.ts`) — testa pares de métricas com defasagem 0-3 dias, só reporta `n>=14` e significativo.
+- [x] Insight Engine (`engines/insights/`): as 7 regras iniciais de `docs/ENGINES.md`, cada uma pura + teste unitário; `insightService.recomputeInsights` monta o `MetricStore` (I/O) e persiste com dedup por `rule_id+período`.
+- [x] Recommendation Engine (`engines/recommendations/`): `recommendationPolicy.recommend` (severidade > meta ativa > recência, máx. 3) + `recommendationService.refreshRecommendations` (dedup por insight já ter recomendação aberta).
+- [x] `domain/goals.ts`, `insights.ts`, `recommendations.ts` + repositórios Supabase — tabelas `goals`/`insights`/`recommendations` já existiam desde a Fase 0, nenhuma migration nova.
+- [x] Rotas `GET /api/v1/correlations`, `GET /api/v1/insights`, `GET /api/v1/recommendations`, `POST /api/v1/recommendations/{id}/done`; cron diário e `admin/recompute` passaram a rodar Analytics → Insights → Recommendations.
+- [x] UI: tela `/insights` (recomendações com botão "Concluído", insights por severidade, correlações), aba nova na `NavBar`, `AlertBanner` na home.
+- [x] 172 testes, `typecheck`/`lint`/`build` verdes. **Verificado com dado real de produção**: `POST /api/v1/admin/recompute` (30 dias) fez a regra `acwr_high` disparar sozinha (ACWR real do Pedro entre 2.95 e 4.00, limite 1.5) — 3 recomendações abertas geradas, `/insights` renderizou tudo, `POST /recommendations/{id}/done` fechou uma recomendação de ponta a ponta. `GET /api/v1/correlations` ainda vazio (esperado — critério exigente + HRV nunca sincronizou).
+- [x] **Fase 4 considerada pronta** pelo critério do roadmap (`docs/ROADMAP.md` atualizado).
+- [x] Pedro configurou `CRON_SECRET` no projeto Vercel (feito nesta sessão, via browser) — cron diário funciona em produção assim que `fase-4-insights` for mergeada.
+- [x] Pedro mergeou `fase-3-analytics` → `main` (PR #5).
 
 ## Resolvido em 2026-07-21 (2) — Fase 3: Analytics core + Dashboard real
 
@@ -76,9 +87,9 @@
 
 - Schema Supabase dedicado `healthia` dentro do projeto `rachaconta` (não um projeto Supabase novo — org já estava no limite de 2 projetos free). Detalhe em `notas/ADR/ADR-002-schema-compartilhado-supabase.md`.
 
-## Depois (Fase 4)
+## Depois (Fase 5)
 
-- [ ] Fase 4 — Correlações, Insights e Recomendações (CorrelationFinder, Insight Engine com 7 regras iniciais, Recommendation Engine com priorização, alertas no dashboard).
+- [ ] Fase 5 — Corpo, Nutrição e Exames (import de bioimpedância clínica + comparativo relógio × balança; base TACO/TBCA, receitas com macros, planejamento alimentar, lista de compras; import de exames + evolução de marcadores + regra `lab_out_of_range`). Ativa de vez as regras `protein_below_target` e `lab_out_of_range` do Insight Engine, que hoje sempre retornam null por falta desses dados.
 
 ## Decisões pendentes
 

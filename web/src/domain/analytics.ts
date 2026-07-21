@@ -90,3 +90,16 @@ export const comparisonResultSchema = z.object({
   insufficientData: z.boolean(),
 });
 export type ComparisonResult = z.infer<typeof comparisonResultSchema>;
+
+// Saída do CorrelationFinder (docs/ENGINES.md): metricA no dia (day - lagDays)
+// correlacionado com metricB no dia (day) — "metricA leva/antecede metricB
+// em lagDays dias". Só instâncias que já passaram no teste de significância
+// (n >= 14, p < 0.05) chegam a existir — ver correlationFinder.ts.
+export const correlationResultSchema = z.object({
+  metricA: z.string(),
+  metricB: z.string(),
+  lagDays: z.number().int().min(0),
+  rho: z.number(),
+  n: z.number().int(),
+});
+export type CorrelationResult = z.infer<typeof correlationResultSchema>;
