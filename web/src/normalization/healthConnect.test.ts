@@ -208,6 +208,27 @@ describe("normalize — fonte health_connect", () => {
     });
   });
 
+  it("aceita metadata.clientRecordId, title e notes como null (Health Connect real manda null, não omite a chave)", () => {
+    const raw = rawRecordFrom({
+      recordType: "SleepSession",
+      payload: {
+        metadata: {
+          id: "hc-uuid-1",
+          dataOrigin: "com.sec.android.app.shealth",
+          lastModifiedTime: "2026-07-20T06:45:00.000Z",
+          clientRecordId: null,
+        },
+        startTime: "2026-07-19T23:30:00.000Z",
+        endTime: "2026-07-20T06:45:00.000Z",
+        title: null,
+        notes: null,
+      },
+    });
+
+    const [event] = normalize(raw);
+    expect(event.eventType).toBe("sleep_session");
+  });
+
   it("lança erro para payload de health_connect inválido", () => {
     const raw = rawRecordFrom({
       recordType: "Weight",

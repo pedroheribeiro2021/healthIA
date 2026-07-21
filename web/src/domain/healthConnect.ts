@@ -8,10 +8,10 @@ import { isoDateTimeSchema as isoDateTime } from "./shared";
 // (vira o external_id do raw_record — id do registro na origem).
 const metadataSchema = z
   .object({
-    id: z.string().optional(),
-    dataOrigin: z.string().optional(),
-    lastModifiedTime: z.string().optional(),
-    clientRecordId: z.string().optional(),
+    id: z.string().nullable().optional(),
+    dataOrigin: z.string().nullable().optional(),
+    lastModifiedTime: z.string().nullable().optional(),
+    clientRecordId: z.string().nullable().optional(),
   })
   .passthrough();
 
@@ -51,8 +51,8 @@ export const sleepSessionPayloadSchema = z.object({
   startTime: isoDateTime,
   endTime: isoDateTime,
   stages: z.array(sleepStageSchema).optional(),
-  title: z.string().optional(),
-  notes: z.string().optional(),
+  title: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 export type SleepSessionPayload = z.infer<typeof sleepSessionPayloadSchema>;
 
@@ -68,8 +68,8 @@ export const exerciseSessionPayloadSchema = z.object({
   startTime: isoDateTime,
   endTime: isoDateTime,
   exerciseType: z.number(),
-  title: z.string().optional(),
-  notes: z.string().optional(),
+  title: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
   segments: z.array(exerciseSegmentSchema).optional(),
 });
 export type ExerciseSessionPayload = z.infer<
@@ -130,8 +130,8 @@ export const nutritionPayloadSchema = z.object({
   metadata: metadataSchema.optional(),
   startTime: isoDateTime,
   endTime: isoDateTime,
-  mealType: z.number().optional(),
-  name: z.string().optional(),
+  mealType: z.number().nullable().optional(),
+  name: z.string().nullable().optional(),
   energy: energySchema.optional(),
   protein: massSchema.optional(),
   totalCarbohydrate: massSchema.optional(),
