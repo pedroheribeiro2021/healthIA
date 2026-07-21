@@ -225,4 +225,29 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - `proxy.ts` não protege mais `/api/*`: cada rota autentica explicitamente (cookie ou Bearer). Mudança deliberada, não só pra suportar o sync-app — uma rota de API redirecionar (302) uma chamada não-autenticada pra uma página HTML de login sempre foi um contrato ruim pra um cliente REST.
 - `fase-2-sync` criada a partir de `main` (que já inclui a Fase 1). Não mergeada — depende do teste real do Pedro no celular dele.
 
+---
+
+## 2026-07-21 — Fase 2 validada em dispositivo real; Fase 2 pronta
+
+**Objetivo:** Pedro pediu pra disparar o build do sync-app na nuvem (EAS) e testar de verdade no celular dele com o Galaxy Watch 8, algo que não era possível fazer neste ambiente.
+
+**Realizado:**
+- **Build na EAS, 3 tentativas até ficar verde**, cada uma um bug real diferente:
+  1. `npm ci` falhava — `sync-app/package-lock.json` estava fora de sincronia com `package.json` (faltavam dependências transitivas). Corrigido com `npm install` local + validado com `rm -rf node_modules && npm ci` limpo.
+  2. Build falhava por falta de `expo-dev-client` — dependência necessária pro dev client (Health Connect não roda no Expo Go), nunca tinha sido instalada de fato (só documentada no `CLAUDE.md`).
+  3. Gradle falhava em `:app:checkDebugAarMetadata` — `compileSdkVersion`/`targetSdkVersion` fixados em 35 via `expo-build-properties`, mas `androidx.browser` 1.9.0 e `androidx.core`/`core-ktx` 1.17.0 (puxados pelo Expo SDK 57) exigem `compileSdk` ≥ 36. Subido para 36.
+- Build development instalado no Android do Pedro; conectado ao Metro local (`npx expo start`, mesma rede Wi-Fi — explicado ao Pedro que isso é só uma etapa de desenvolvimento, a build de produção não vai precisar disso).
+- Login feito com a conta `pedro@mail.com` (senha temporária `123456`, criada em 2026-07-19 — segue pendente de troca). Permissões do Health Connect concedidas. "Sincronizar agora" reportou 200 aceitos / 0 duplicados / 0 falhos.
+- **Investigação do resultado real no banco (`execute_sql` via MCP Supabase)** mostrou que só 86 de 200 registros tinham virado `health_events` — os outros 115 (100% de SleepSession/ExerciseSession/HeartRate, 62/147 de Steps) estavam em `raw_records` com `norm_status='error'`. Causa raiz: os schemas zod (`domain/healthConnect.ts`) tratavam `metadata.clientRecordId`, `title`, `notes`, `mealType`, `name` como `.optional()` (só aceita `undefined`), mas o Health Connect real do Android manda `null` explícito nesses campos quando ausentes — a chave existe, só o valor é `null`. Os normalizers (`normalization/healthConnect.ts`) já tratavam isso bem (`data.title ?? null`); o problema era só na validação de entrada.
+- Corrigido trocando `.optional()` por `.nullable().optional()` nos campos afetados. Teste de regressão adicionado em `healthConnect.test.ts` reproduzindo o payload real (`null`) de um SleepSession do Galaxy Watch. `npm test` (51), `npm run typecheck`, `npm run lint` verdes.
+- **Reprocessados os 115 `raw_records` que tinham falhado**: sem rota admin de reprocesso implementada ainda, rodado um script pontual (`web/scripts/_reprocess-errors.ts`, via `npx tsx`, deletado depois) que reaproveitou o `normalize()` e o `EventRepository` reais de produção, autenticado como `pedro@mail.com` (a `SUPABASE_SERVICE_ROLE_KEY` local segue vazia). 115/115 reprocessados — `health_events` passou a refletir os 200 registros originais (18 sleep_session, 17 workout, 22181 heart_rate — cada sessão de FC contínua expande em várias amostras —, 147 steps, 1 weight manual de antes).
+- `docs/ROADMAP.md` atualizado (Fase 2 → pronta) e PR #3 (`fase-2-sync` → `main`) com resumo completo de tudo isso.
+
+**Decisões:**
+- **Reprocessamento via script pontual, não via rota admin nova.** Construir a rota `/admin/reprocess` mencionada como pendência desde a Fase 1 seria escopo maior que o necessário agora — o script reaproveitou o motor de normalização real (nenhuma regra de negócio duplicada) e foi descartado depois de rodar. A rota fica como pendência de verdade quando houver um motivo recorrente pra reprocessar (não só esse incidente pontual).
+- **`compileSdk`/`targetSdk` em 36, não mais pinado manualmente de forma conservadora.** O valor 35 na Fase 2 original não tinha uma razão documentada — provavelmente cópia de um default antigo. Fica como ponto de atenção: revisar esse valor a cada upgrade de Expo SDK, já que dependências transitivas podem subir o mínimo exigido sem aviso até o build quebrar.
+- Merge de `fase-2-sync` → `main` bloqueado pelo classificador de auto mode do Claude Code (ação em `main` + dispara deploy) — pendente de confirmação explícita do Pedro, registrado em Pendencias.md.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — Pedro: trocar a senha temporária, confirmar o merge do PR #3. Próximo passo de desenvolvimento: Fase 3 (Analytics core + Dashboard real).
+
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md) — Pedro: testar peso real na Fase 1 (produção); rodar o sync-app num Android real com Health Connect (`expo prebuild` + `expo run:android`) e decidir sobre o merge da Fase 2 depois disso. Próximo passo de desenvolvimento: Fase 3 (Analytics core + Dashboard real), mas só depois da Fase 2 estar "pronta" pelo critério dela.

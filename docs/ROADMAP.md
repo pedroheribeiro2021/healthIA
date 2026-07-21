@@ -22,12 +22,12 @@ Dados manuais e dashboard vêm antes do sync automático — valor desde a prime
 **Pronto quando:** registrar peso pelo celular na rua e ver o gráfico atualizado; linhas correspondentes em raw_records e health_events.
 **Status:** ✅ **Fase 1 pronta.** Mergeada em `main`, em produção (`healthia-six.vercel.app`), e Pedro confirmou o registro de peso real pelo celular.
 
-## Fase 2 — Sync automático (Health Connect) — implementação em 2026-07-20, ver notas/Registro-de-Sessoes.md
-- sync-app Expo: permissões Health Connect, leitura de sono/treinos/FC/HRV/passos/peso/composição corporal/hidratação/refeição, fila local (expo-sqlite), envio em lote, sync manual + tentativa de background. ✅ código; ⏳ build/teste num Android real (Health Connect exige dev client, não roda no Expo Go).
-- `POST /api/v1/sync/batch` idempotente; normalizers do Health Connect para os 9 tipos lidos. ✅ implementado e testado (unit, repositório fake).
+## Fase 2 — Sync automático (Health Connect) — implementada em 2026-07-20, validada em dispositivo real em 2026-07-21, ver notas/Registro-de-Sessoes.md
+- sync-app Expo: permissões Health Connect, leitura de sono/treinos/FC/HRV/passos/peso/composição corporal/hidratação/refeição, fila local (expo-sqlite), envio em lote, sync manual + tentativa de background. ✅ código e ✅ testado num Android real (Galaxy Watch 8 via Samsung Health).
+- `POST /api/v1/sync/batch` idempotente; normalizers do Health Connect para os 9 tipos lidos. ✅ implementado e testado (unit, repositório fake, e agora também com dado real de produção).
 
 **Pronto quando:** uma noite de sono e um treino do relógio aparecem como health_events sem intervenção manual.
-**Status:** lado servidor (rota + normalizers) testado e verde. sync-app scaffolded e com `tsc --noEmit` limpo, mas **não testado em dispositivo real** — não há como simular Health Connect neste ambiente. Falta: `expo prebuild`/`expo run:android` no aparelho do Pedro, autorizar as permissões, validar que sono/treino real aparecem em `health_events`. Branch `fase-2-sync`, não mergeada em `main`.
+**Status:** ✅ **Fase 2 pronta.** Build development gerado via EAS Build (nuvem), instalado no Android do Pedro, login com a conta real, permissões do Health Connect concedidas, sync executado — sono, treino, frequência cardíaca, passos e peso do Galaxy Watch 8 confirmados em `health_events` (18 sleep_session, 17 workout, 22181 heart_rate, 147 steps). Bug real encontrado e corrigido no caminho (schemas zod do Health Connect rejeitavam `null` em campos opcionais; Health Connect manda `null` explícito, não omite a chave) — 115 registros que tinham caído em erro de normalização foram reprocessados com sucesso após o fix. Branch `fase-2-sync`, aguardando confirmação do Pedro para merge em `main`.
 
 ## Fase 3 — Analytics core + Dashboard real
 - Catálogo de métricas; calculators de sono, FC repouso, HRV, carga, peso; `daily_summary`; Recovery Score v1; TrendAnalyzer; Vercel Cron diário.
