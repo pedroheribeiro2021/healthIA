@@ -7,6 +7,10 @@ import type {
 } from "@/domain/analytics";
 import type { EventRepository, MetricRepository } from "@/domain/repositories";
 import { computeAcwr } from "./calculators/acwr";
+import {
+  computeBodyFatPctDaily,
+  computeLeanMassDaily,
+} from "./calculators/bodyComposition";
 import { computeHrvRmssdDaily } from "./calculators/hrv";
 import { computeRecoveryScoreDaily } from "./calculators/recoveryScore";
 import { computeRestingHrDaily } from "./calculators/restingHr";
@@ -51,39 +55,51 @@ export async function recomputeDay(
   const heartRateWindowStart = localDayBounds(addDays(day, -1)).start;
   const windowEnd = localDayBounds(addDays(day, 1)).end;
 
-  const [sleepEvents, heartRateEvents, workoutEvents, weightEvents, hrvEvents, stepsEvents] =
-    await Promise.all([
-      eventRepo.listHealthEvents({
-        eventType: "sleep_session",
-        from: sleepWindowStart,
-        to: windowEnd,
-      }),
-      eventRepo.listHealthEvents({
-        eventType: "heart_rate",
-        from: heartRateWindowStart,
-        to: windowEnd,
-      }),
-      eventRepo.listHealthEvents({
-        eventType: "workout",
-        from: heartRateWindowStart,
-        to: windowEnd,
-      }),
-      eventRepo.listHealthEvents({
-        eventType: "weight",
-        from: period.start,
-        to: period.end,
-      }),
-      eventRepo.listHealthEvents({
-        eventType: "hrv",
-        from: period.start,
-        to: period.end,
-      }),
-      eventRepo.listHealthEvents({
-        eventType: "steps",
-        from: period.start,
-        to: period.end,
-      }),
-    ]);
+  const [
+    sleepEvents,
+    heartRateEvents,
+    workoutEvents,
+    weightEvents,
+    hrvEvents,
+    stepsEvents,
+    bodyCompositionEvents,
+  ] = await Promise.all([
+    eventRepo.listHealthEvents({
+      eventType: "sleep_session",
+      from: sleepWindowStart,
+      to: windowEnd,
+    }),
+    eventRepo.listHealthEvents({
+      eventType: "heart_rate",
+      from: heartRateWindowStart,
+      to: windowEnd,
+    }),
+    eventRepo.listHealthEvents({
+      eventType: "workout",
+      from: heartRateWindowStart,
+      to: windowEnd,
+    }),
+    eventRepo.listHealthEvents({
+      eventType: "weight",
+      from: period.start,
+      to: period.end,
+    }),
+    eventRepo.listHealthEvents({
+      eventType: "hrv",
+      from: period.start,
+      to: period.end,
+    }),
+    eventRepo.listHealthEvents({
+      eventType: "steps",
+      from: period.start,
+      to: period.end,
+    }),
+    eventRepo.listHealthEvents({
+      eventType: "body_composition",
+      from: period.start,
+      to: period.end,
+    }),
+  ]);
 
   // 1) Calculators do dia — só dependem de health_events já buscados.
   const weightResult = computeWeightDaily(weightEvents, period);
@@ -103,6 +119,8 @@ export async function recomputeDay(
     start: sleepWindowStart,
     end: period.end,
   });
+  const bodyFatPctResult = computeBodyFatPctDaily(bodyCompositionEvents, period);
+  const leanMassResult = computeLeanMassDaily(bodyCompositionEvents, period);
 
   await metricRepo.upsertMetricSnapshots([
     weightResult,
@@ -112,6 +130,8 @@ export async function recomputeDay(
     hrvResult,
     trainingLoadResult,
     bedtimeResult,
+    bodyFatPctResult,
+    leanMassResult,
   ]);
 
   // 2) Rollups — precisam do histórico diário já persistido, incluindo o

@@ -8,6 +8,16 @@ import type {
 import type { Goal } from "./goals";
 import type { EventType, HealthEvent, NewHealthEvent } from "./healthEvent";
 import type { Insight, NewInsight } from "./insights";
+import type {
+  Food,
+  NewRecipeIngredient,
+  NewRecipeInput,
+  NewShoppingListItemInput,
+  Recipe,
+  RecipeIngredient,
+  ShoppingListItem,
+  ShoppingListStatus,
+} from "./nutrition";
 import type { NewRecommendation, Recommendation } from "./recommendations";
 import type { NewRawRecord, RawRecord } from "./rawRecord";
 
@@ -99,4 +109,36 @@ export interface RecommendationRepository {
     id: number,
     status: Recommendation["status"],
   ): Promise<Recommendation>;
+}
+
+/**
+ * Base de alimentos (docs/DATA_MODEL.md `foods`) — só leitura; a base é
+ * povoada por seed/migration (Fase 5), sem CRUD do usuário.
+ * Implementação concreta em repositories/foodRepository.ts.
+ */
+export interface FoodRepository {
+  searchFoods(query: string, limit?: number): Promise<Food[]>;
+  getFoodById(id: number): Promise<Food | null>;
+}
+
+/**
+ * Receitas + ingredientes (docs/DATA_MODEL.md `recipes`/`recipe_ingredients`).
+ * Implementação concreta em repositories/recipeRepository.ts.
+ */
+export interface RecipeRepository {
+  createRecipe(input: NewRecipeInput): Promise<Recipe>;
+  listRecipes(): Promise<Recipe[]>;
+  getRecipe(id: number): Promise<Recipe | null>;
+  addIngredient(ingredient: NewRecipeIngredient): Promise<RecipeIngredient>;
+  listIngredients(recipeId: number): Promise<RecipeIngredient[]>;
+}
+
+/**
+ * Lista de compras (docs/DATA_MODEL.md `shopping_list_items`).
+ * Implementação concreta em repositories/shoppingListRepository.ts.
+ */
+export interface ShoppingListRepository {
+  addItem(input: NewShoppingListItemInput): Promise<ShoppingListItem>;
+  listByStatus(status: ShoppingListStatus): Promise<ShoppingListItem[]>;
+  markBought(id: number): Promise<ShoppingListItem>;
 }

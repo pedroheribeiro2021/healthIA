@@ -11,6 +11,8 @@ import {
   normalizeSteps,
   normalizeWeight as normalizeHealthConnectWeight,
 } from "./healthConnect";
+import { normalizeBioimpedanceEntry } from "./bioimpedanceImport";
+import { normalizeLabResult } from "./labImport";
 import {
   normalizeHydrationEntry,
   normalizeMealEntry,
@@ -25,6 +27,8 @@ const registry = new Map<string, Normalizer>([
   ["manual:HydrationEntry", normalizeHydrationEntry],
   ["manual:MealEntry", normalizeMealEntry],
   ["manual:NoteEntry", normalizeNoteEntry],
+  ["bioimpedance:BioimpedanceEntry", normalizeBioimpedanceEntry],
+  ["lab:LabResult", normalizeLabResult],
 
   ["health_connect:SleepSession", normalizeSleepSession],
   ["health_connect:ExerciseSession", normalizeExerciseSession],
