@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Goal, GoalDirection } from "@/domain/goals";
+import type { Goal, GoalDirection, NewGoalInput } from "@/domain/goals";
 import type { GoalRepository } from "@/domain/repositories";
 import type { Database } from "./supabase/databaseTypes";
 import { createSupabaseServerClient } from "./supabase/serverClient";
@@ -24,8 +24,7 @@ function toGoal(row: {
   };
 }
 
-// Fábrica pura, mesmo padrão de eventRepository.ts. Só leitura hoje —
-// criação de metas é Fase 6 (ver domain/goals.ts).
+// Fábrica pura, mesmo padrão de eventRepository.ts.
 export function createGoalRepositoryFromClient(
   supabase: SupabaseClient<Database, "healthia">,
 ): GoalRepository {
@@ -38,6 +37,46 @@ export function createGoalRepositoryFromClient(
 
       if (error) throw error;
       return data.map(toGoal);
+    },
+
+    async listGoals(): Promise<Goal[]> {
+      const { data, error } = await supabase
+        .from("goals")
+        .select()
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data.map(toGoal);
+    },
+
+    async createGoal(input: NewGoalInput): Promise<Goal> {
+      const { data, error } = await supabase
+        .from("goals")
+        .insert({
+          metric_id: input.metricId,
+          target_value: input.targetValue,
+          direction: input.direction,
+          deadline: input.deadline ?? null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return toGoal(data);
+    },
+
+    // Sem hard delete (mesmo espírito de recommendations.status/recipes.archived)
+    // — "remover" uma meta preserva histórico pra relatórios futuros.
+    async deactivateGoal(id: number): Promise<Goal> {
+      const { data, error } = await supabase
+        .from("goals")
+        .update({ active: false })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return toGoal(data);
     },
   };
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Insight, InsightSeverity } from "@/domain/insights";
 
 const SEVERITY_LABEL: Record<InsightSeverity, string> = {
@@ -37,6 +38,12 @@ export function InsightList({ insights }: { insights: Insight[] }) {
           </p>
           <p className="mt-1 text-sm font-semibold">{insight.title}</p>
           <p className="mt-1 text-xs opacity-80">{insight.body}</p>
+          <Link
+            href={`/chat?q=${encodeURIComponent(`Por que o insight "${insight.title}" apareceu? Explique com os números reais.`)}`}
+            className="mt-2 inline-block text-xs font-medium underline opacity-70 hover:opacity-100"
+          >
+            Perguntar à IA →
+          </Link>
         </div>
       ))}
     </div>
