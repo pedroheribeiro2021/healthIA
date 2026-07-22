@@ -91,6 +91,17 @@ export const METRIC_CATALOG: readonly MetricCatalogEntry[] = [
     requiredEventTypes: ["weight"],
   },
   {
+    id: "body.fatpct.daily",
+    description:
+      "Percentual de gordura do dia (média entre relógio e bioimpedância clínica, quando houver mais de um registro)",
+    requiredEventTypes: ["body_composition"],
+  },
+  {
+    id: "body.leanmass.daily",
+    description: "Massa magra do dia, kg (só bioimpedância clínica reporta)",
+    requiredEventTypes: ["body_composition"],
+  },
+  {
     id: "recovery.score.daily",
     description: "Score composto de recuperação (0-100, v1)",
     requiredEventTypes: [],

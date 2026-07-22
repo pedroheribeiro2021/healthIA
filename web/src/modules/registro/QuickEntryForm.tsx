@@ -2,9 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { ManualEntryType, MealType } from "@/domain/manualEntry";
+import type { MealType } from "@/domain/manualEntry";
 
-const TYPE_LABELS: Record<ManualEntryType, string> = {
+// Bioimpedância clínica (Fase 5) tem seu próprio formulário no módulo Corpo
+// — é um lançamento detalhado e pouco frequente, diferente do registro
+// rápido do dia a dia que esta tela cobre.
+type QuickEntryType = "weight" | "hydration" | "meal" | "note";
+
+const TYPE_LABELS: Record<QuickEntryType, string> = {
   weight: "Peso",
   hydration: "Hidratação",
   meal: "Refeição",
@@ -25,7 +30,7 @@ const labelClass = "text-sm font-medium";
 
 export function QuickEntryForm() {
   const router = useRouter();
-  const [type, setType] = useState<ManualEntryType>("weight");
+  const [type, setType] = useState<QuickEntryType>("weight");
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<
     { kind: "success" | "error"; message: string } | null
@@ -98,7 +103,7 @@ export function QuickEntryForm() {
       className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
     >
       <div className="flex gap-1 rounded-md bg-neutral-100 p-1 dark:bg-neutral-800">
-        {(Object.keys(TYPE_LABELS) as ManualEntryType[]).map((option) => (
+        {(Object.keys(TYPE_LABELS) as QuickEntryType[]).map((option) => (
           <button
             key={option}
             type="button"

@@ -3,7 +3,17 @@
 ## Ação do Pedro
 
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
-- [ ] **Confirmar merge de `fase-4-insights` em `main`** — mesma trava do classificador de auto mode do Claude Code (ação em `main` + dispara deploy de produção), pendente de confirmação explícita do Pedro.
+- [ ] **Confirmar merge de `fase-5-corpo-nutricao-exames` em `main`** — mesma trava do classificador de auto mode do Claude Code (ação em `main` + dispara deploy de produção), pendente de confirmação explícita do Pedro.
+
+## Resolvido em 2026-07-21 (4) — Fase 5: Corpo, Nutrição e Exames
+
+- [x] **Corpo**: import de bioimpedância clínica (`POST /api/v1/imports/bioimpedance`, fonte `bioimpedance` própria) + calculators `body.fatpct.daily`/`body.leanmass.daily` + tela `/corpo` com comparativo relógio × bioimpedância clínica (percentual de gordura) e cards de tendência.
+- [x] **Exames**: import de resultado de exame (`POST /api/v1/imports/lab`, fonte `lab`) com upload opcional do laudo pro bucket privado `exams` no Storage (migration nova: `storage.buckets` + policies reaproveitando `healthia.is_authorized()`) + tela `/exames` com histórico por marcador e badge "fora da faixa" — ativa de vez a regra `lab_out_of_range` do Insight Engine (Fase 4), que até aqui sempre retornava null.
+- [x] **Nutrição**: seed de 93 alimentos comuns em `healthia.foods` (macros por 100g, migration nova) + `engines/nutrition/` (macros escalados/somados, puro) + CRUD de receitas e ingredientes (macros congelados na quantidade do ingrediente, não FK viva) + lista de compras com "Copiar lista" pro Google Keep. Telas `/nutricao` e `/nutricao/receitas/[id]`.
+- [x] `NavBar` ganhou Corpo, Exames e Nutrição (7 abas) — trocada de colunas de largura igual pra rolagem horizontal.
+- [x] 198 testes, `typecheck`/`lint`/`build` verdes. **Verificado com dado real de produção**: bioimpedância registrada apareceu em `/corpo` com os valores corretos após recompute; exame de vitamina D fora da faixa apareceu em `/exames` **e** disparou sozinho `lab_out_of_range` em `/insights`; receita de teste (frango + arroz, 2 porções) calculou sozinha 494.5kcal/53g proteína por porção, batendo com a soma manual; lista de compras testada ponta a ponta.
+- [x] **Fase 5 considerada pronta** pelo critério do roadmap (`docs/ROADMAP.md` atualizado). Sem planejamento alimentar (vínculo receita↔refeição, calendário) — não fazia parte do critério de pronto, registrado como decisão consciente de escopo.
+- [x] Pedro mergeou `fase-4-insights` → `main` (PR #6) e configurou `CRON_SECRET` no Vercel antes do início desta sessão.
 
 ## Resolvido em 2026-07-21 (3) — Fase 4: Correlações, Insights e Recomendações
 
@@ -87,9 +97,12 @@
 
 - Schema Supabase dedicado `healthia` dentro do projeto `rachaconta` (não um projeto Supabase novo — org já estava no limite de 2 projetos free). Detalhe em `notas/ADR/ADR-002-schema-compartilhado-supabase.md`.
 
-## Depois (Fase 5)
+## Depois (Fase 6)
 
-- [ ] Fase 5 — Corpo, Nutrição e Exames (import de bioimpedância clínica + comparativo relógio × balança; base TACO/TBCA, receitas com macros, planejamento alimentar, lista de compras; import de exames + evolução de marcadores + regra `lab_out_of_range`). Ativa de vez as regras `protein_below_target` e `lab_out_of_range` do Insight Engine, que hoje sempre retornam null por falta desses dados.
+- [ ] Fase 6 — Metas, Relatórios e IA (metas por métrica — ativa `weight_trend_vs_goal`/`protein_below_target` do Insight Engine —, relatório semanal/mensal, AI Engine com adapter + Gemini default, chat com streaming, explicação de insights, sugestão de receitas dentro dos macros).
+- [ ] Planejamento alimentar de verdade (vínculo receita↔refeição registrada, calendário) — ficou fora da Fase 5 por não fazer parte do critério de pronto; hoje registrar uma refeição e cadastrar uma receita são fluxos separados.
+- [ ] Expandir a base de alimentos (`healthia.foods`) além do seed curado de 93 itens da Fase 5, se o Pedro sentir falta de algum alimento nas receitas — é uma tabela de domínio comum, dá pra inserir mais linhas sem migration.
+- [ ] Unidade de ingrediente de receita além de grama (hoje só "quantidade em gramas" — ex.: "1 unidade" de ovo exige o Pedro estimar o peso).
 
 ## Decisões pendentes
 
