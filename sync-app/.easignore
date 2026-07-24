@@ -1,0 +1,12 @@
+# EAS Build ignora isso ao montar o arquivo do projeto pra enviar pra nuvem.
+# Criado porque, sem esse arquivo, o eas-cli não respeitava corretamente o
+# .gitignore (projeto é um subdiretório de um monorepo, não a raiz do git) e
+# empacotava node_modules inteiro (~360MB) no upload, deixando o build
+# efetivamente travado (upload de ~474MB nunca terminava).
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+.git/
