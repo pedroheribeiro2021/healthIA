@@ -30,6 +30,8 @@ function baseStore(overrides: Partial<MetricStore> = {}): MetricStore {
     recentWorkouts: [],
     recentLabResults: [],
     activeGoals: [],
+    habits: [],
+    recentHabitLogs: [],
     ...overrides,
   };
 }
@@ -37,7 +39,7 @@ function baseStore(overrides: Partial<MetricStore> = {}): MetricStore {
 describe("consecutiveSoccerRecovery", () => {
   it("dispara com futebol nos 2 dias anteriores + recovery baixo hoje", () => {
     const store = baseStore({
-      todaySummary: { day: "2026-07-21", sleepDurationS: null, sleepScore: null, restingHr: null, hrvRmssd: null, steps: null, workouts: null, trainingLoad: null, kcalIn: null, proteinG: null, waterL: null, weightKg: null, recoveryScore: 45, computedAt: "" },
+      todaySummary: { day: "2026-07-21", sleepDurationS: null, sleepScore: null, restingHr: null, hrvRmssd: null, steps: null, workouts: null, trainingLoad: null, kcalIn: null, proteinG: null, waterL: null, weightKg: null, recoveryScore: 45, habitAdherencePct: null, bodyFatPct: null, computedAt: "" },
       recentWorkouts: [
         soccerWorkout("2026-07-19T20:00:00-03:00"),
         soccerWorkout("2026-07-20T20:00:00-03:00"),
@@ -50,7 +52,7 @@ describe("consecutiveSoccerRecovery", () => {
 
   it("não dispara se recovery está ok", () => {
     const store = baseStore({
-      todaySummary: { day: "2026-07-21", sleepDurationS: null, sleepScore: null, restingHr: null, hrvRmssd: null, steps: null, workouts: null, trainingLoad: null, kcalIn: null, proteinG: null, waterL: null, weightKg: null, recoveryScore: 80, computedAt: "" },
+      todaySummary: { day: "2026-07-21", sleepDurationS: null, sleepScore: null, restingHr: null, hrvRmssd: null, steps: null, workouts: null, trainingLoad: null, kcalIn: null, proteinG: null, waterL: null, weightKg: null, recoveryScore: 80, habitAdherencePct: null, bodyFatPct: null, computedAt: "" },
       recentWorkouts: [
         soccerWorkout("2026-07-19T20:00:00-03:00"),
         soccerWorkout("2026-07-20T20:00:00-03:00"),
@@ -61,7 +63,7 @@ describe("consecutiveSoccerRecovery", () => {
 
   it("não dispara com futebol em só 1 dos 2 dias", () => {
     const store = baseStore({
-      todaySummary: { day: "2026-07-21", sleepDurationS: null, sleepScore: null, restingHr: null, hrvRmssd: null, steps: null, workouts: null, trainingLoad: null, kcalIn: null, proteinG: null, waterL: null, weightKg: null, recoveryScore: 45, computedAt: "" },
+      todaySummary: { day: "2026-07-21", sleepDurationS: null, sleepScore: null, restingHr: null, hrvRmssd: null, steps: null, workouts: null, trainingLoad: null, kcalIn: null, proteinG: null, waterL: null, weightKg: null, recoveryScore: 45, habitAdherencePct: null, bodyFatPct: null, computedAt: "" },
       recentWorkouts: [soccerWorkout("2026-07-20T20:00:00-03:00")],
     });
     expect(consecutiveSoccerRecovery.evaluate(store)).toBeNull();

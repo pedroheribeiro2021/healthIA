@@ -309,6 +309,8 @@ export type Database = {
           water_l: number | null;
           weight_kg: number | null;
           recovery_score: number | null;
+          habit_adherence_pct: number | null;
+          body_fat_pct: number | null;
           computed_at: string;
         };
         Insert: {
@@ -325,11 +327,67 @@ export type Database = {
           water_l?: number | null;
           weight_kg?: number | null;
           recovery_score?: number | null;
+          habit_adherence_pct?: number | null;
+          body_fat_pct?: number | null;
           computed_at?: string;
         };
         Update: Partial<
           Database["healthia"]["Tables"]["daily_summary"]["Insert"]
         >;
+        Relationships: [];
+      };
+      habits: {
+        Row: {
+          id: number;
+          slug: string;
+          name: string;
+          category: string;
+          kind: string;
+          unit: string | null;
+          target_per_day: number | null;
+          target_per_week: number;
+          source_kind: string;
+          priority: string;
+          sort_order: number;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          slug: string;
+          name: string;
+          category: string;
+          kind: string;
+          unit?: string | null;
+          target_per_day?: number | null;
+          target_per_week: number;
+          source_kind?: string;
+          priority?: string;
+          sort_order?: number;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["healthia"]["Tables"]["habits"]["Insert"]>;
+        Relationships: [];
+      };
+      habit_logs: {
+        Row: {
+          id: number;
+          habit_id: number;
+          day: string;
+          done: boolean;
+          quantity: number | null;
+          note: string | null;
+          logged_at: string;
+        };
+        Insert: {
+          habit_id: number;
+          day: string;
+          done?: boolean;
+          quantity?: number | null;
+          note?: string | null;
+          logged_at?: string;
+        };
+        Update: Partial<Database["healthia"]["Tables"]["habit_logs"]["Insert"]>;
         Relationships: [];
       };
     };

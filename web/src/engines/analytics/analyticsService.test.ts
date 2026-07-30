@@ -5,9 +5,28 @@ import type {
   NewDailySummary,
   NewMetricSnapshot,
 } from "@/domain/analytics";
-import type { EventRepository, MetricRepository } from "@/domain/repositories";
+import type {
+  EventRepository,
+  HabitRepository,
+  MetricRepository,
+} from "@/domain/repositories";
 import type { HealthEvent } from "@/domain/healthEvent";
 import { recomputeDay } from "./analyticsService";
+
+function createFakeHabitRepository(): HabitRepository {
+  return {
+    async listActiveHabits() {
+      return [];
+    },
+    async listLogs() {
+      return [];
+    },
+    async upsertLog() {
+      throw new Error("não usado neste teste");
+    },
+    async deleteLog() {},
+  };
+}
 
 function createFakeEventRepository(events: HealthEvent[]): EventRepository {
   return {
@@ -197,7 +216,7 @@ describe("recomputeDay", () => {
     const eventRepo = createFakeEventRepository(events);
     const metricRepo = createFakeMetricRepository();
 
-    const summary = await recomputeDay(eventRepo, metricRepo, "2026-07-20");
+    const summary = await recomputeDay(eventRepo, metricRepo, createFakeHabitRepository(), "2026-07-20");
 
     expect(summary.sleepDurationS).toBe(7 * 3600);
     expect(summary.restingHr).toBe(50);
@@ -214,7 +233,7 @@ describe("recomputeDay", () => {
     const eventRepo = createFakeEventRepository([]);
     const metricRepo = createFakeMetricRepository();
 
-    const summary = await recomputeDay(eventRepo, metricRepo, "2026-07-20");
+    const summary = await recomputeDay(eventRepo, metricRepo, createFakeHabitRepository(), "2026-07-20");
 
     expect(summary.sleepDurationS).toBeNull();
     expect(summary.restingHr).toBeNull();
@@ -230,9 +249,9 @@ describe("recomputeDay", () => {
     const eventRepo = createFakeEventRepository(events);
     const metricRepo = createFakeMetricRepository();
 
-    await recomputeDay(eventRepo, metricRepo, "2026-07-20");
+    await recomputeDay(eventRepo, metricRepo, createFakeHabitRepository(), "2026-07-20");
     const countAfterFirst = metricRepo.snapshots.length;
-    await recomputeDay(eventRepo, metricRepo, "2026-07-20");
+    await recomputeDay(eventRepo, metricRepo, createFakeHabitRepository(), "2026-07-20");
 
     expect(metricRepo.snapshots.length).toBe(countAfterFirst);
     expect(metricRepo.summaries.length).toBe(1);

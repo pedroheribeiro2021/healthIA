@@ -6,11 +6,27 @@ import type { Insight, NewInsight } from "@/domain/insights";
 import type {
   EventRepository,
   GoalRepository,
+  HabitRepository,
   InsightRepository,
   MetricRepository,
 } from "@/domain/repositories";
 import { localDayBounds } from "../analytics/period";
 import { recomputeInsights } from "./insightService";
+
+function createFakeHabitRepository(): HabitRepository {
+  return {
+    async listActiveHabits() {
+      return [];
+    },
+    async listLogs() {
+      return [];
+    },
+    async upsertLog() {
+      throw new Error("não usado neste teste");
+    },
+    async deleteLog() {},
+  };
+}
 
 function createFakeEventRepository(events: HealthEvent[]): EventRepository {
   return {
@@ -144,6 +160,7 @@ describe("recomputeInsights", () => {
       metricRepo,
       goalRepo,
       insightRepo,
+      createFakeHabitRepository(),
       "2026-07-21",
     );
 
@@ -158,8 +175,8 @@ describe("recomputeInsights", () => {
     const goalRepo = createFakeGoalRepository([]);
     const insightRepo = createFakeInsightRepository();
 
-    await recomputeInsights(eventRepo, metricRepo, goalRepo, insightRepo, "2026-07-21");
-    await recomputeInsights(eventRepo, metricRepo, goalRepo, insightRepo, "2026-07-21");
+    await recomputeInsights(eventRepo, metricRepo, goalRepo, insightRepo, createFakeHabitRepository(), "2026-07-21");
+    await recomputeInsights(eventRepo, metricRepo, goalRepo, insightRepo, createFakeHabitRepository(), "2026-07-21");
 
     expect(insightRepo.inserted).toHaveLength(1);
   });
@@ -175,6 +192,7 @@ describe("recomputeInsights", () => {
       metricRepo,
       goalRepo,
       insightRepo,
+      createFakeHabitRepository(),
       "2026-07-21",
     );
 

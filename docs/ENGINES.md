@@ -85,6 +85,15 @@ Regras iniciais (`insights/rules/`):
 | `acwr_high` | ACWR > 1.5 (risco de overtraining) |
 | `lab_out_of_range` | marcador fora da faixa de referência do laudo |
 
+Regras da Fase 7 (hábitos/rotina):
+
+| ruleId | Condição (resumo) |
+|---|---|
+| `habit_adherence_drop` | adesão 7d < 60%, ou queda ≥ 20pp vs. semana anterior |
+| `habit_streak_broken` | hábito core com streak ≥ 7 quebrado |
+| `stairs_below_target` | escadas < 3 ocorrências na semana fechada |
+| `weight_plateau_low_adherence` | peso sem tendência há ≥ 21 dias e adesão 7d < 70% |
+
 Toda insight carrega `evidence` (números que a justificam) — é o que a IA recebe para explicar.
 
 ## 3. Recommendation Engine (`web/src/engines/recommendations/`)

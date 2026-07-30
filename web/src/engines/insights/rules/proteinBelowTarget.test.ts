@@ -15,6 +15,8 @@ function baseStore(overrides: Partial<MetricStore> = {}): MetricStore {
     recentWorkouts: [],
     recentLabResults: [],
     activeGoals: [],
+    habits: [],
+    recentHabitLogs: [],
     ...overrides,
   };
 }
@@ -23,7 +25,7 @@ function summaryWithProtein(day: string, proteinG: number | null): DailySummary 
   return {
     day, sleepDurationS: null, sleepScore: null, restingHr: null, hrvRmssd: null,
     steps: null, workouts: null, trainingLoad: null, kcalIn: null, proteinG,
-    waterL: null, weightKg: null, recoveryScore: null, computedAt: "",
+    waterL: null, weightKg: null, recoveryScore: null, habitAdherencePct: null, bodyFatPct: null, computedAt: "",
   };
 }
 

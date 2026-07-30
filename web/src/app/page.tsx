@@ -1,9 +1,13 @@
 import { LogoutButton } from "@/components/LogoutButton";
 import { getMetricSeries } from "@/engines/analytics/queries";
 import { addDays, todayLocalDay } from "@/engines/analytics/period";
+import { getHabitWeek, getTodayHabitStates } from "@/engines/habits/habitService";
 import { AlertBanner } from "@/modules/insights/AlertBanner";
 import { OverviewCards } from "@/modules/dashboard/OverviewCards";
 import { RecoveryTrendChart } from "@/modules/dashboard/RecoveryTrendChart";
+import { CheckinCard } from "@/modules/rotina/CheckinCard";
+import { createSupabaseEventRepository } from "@/repositories/eventRepository";
+import { createSupabaseHabitRepository } from "@/repositories/habitRepository";
 import { createSupabaseMetricRepository } from "@/repositories/metricRepository";
 import { createSupabaseRecommendationRepository } from "@/repositories/recommendationRepository";
 import { createSupabaseServerClient } from "@/repositories/supabase/serverClient";
@@ -20,8 +24,10 @@ export default async function Home() {
 
   const metricRepo = await createSupabaseMetricRepository();
   const recommendationRepo = await createSupabaseRecommendationRepository();
+  const habitRepo = await createSupabaseHabitRepository();
+  const eventRepo = await createSupabaseEventRepository();
   const today = todayLocalDay();
-  const [summary, { series: recoverySeries }, openRecommendations] =
+  const [summary, { series: recoverySeries }, openRecommendations, todayStates, week] =
     await Promise.all([
       metricRepo.getLatestDailySummary(),
       getMetricSeries(
@@ -31,7 +37,14 @@ export default async function Home() {
         today,
       ),
       recommendationRepo.listByStatus("open"),
+      getTodayHabitStates(habitRepo, eventRepo, today),
+      getHabitWeek(habitRepo, eventRepo, today),
     ]);
+  const streakByHabitId = new Map(week.map((entry) => [entry.habit.id, entry.streak]));
+  const checkinRows = todayStates.map((state) => ({
+    ...state,
+    streak: streakByHabitId.get(state.habit.id) ?? 0,
+  }));
 
   return (
     <main className="flex flex-1 flex-col bg-neutral-50 pb-20 dark:bg-neutral-950">
@@ -52,6 +65,7 @@ export default async function Home() {
           )}
         </p>
         <AlertBanner openCount={openRecommendations.length} />
+        <CheckinCard initialStates={checkinRows} />
         <OverviewCards summary={summary} />
         <RecoveryTrendChart series={recoverySeries} />
       </div>

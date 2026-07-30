@@ -52,6 +52,24 @@ const ACTION_BY_RULE: Record<string, ActionConfig> = {
     actionType: "consult_doctor",
     title: "Converse com um médico sobre esse exame",
   },
+  habit_adherence_drop: {
+    actionType: "review_routine",
+    title: "Revise sua rotina de hábitos",
+    relatedGoalMetricId: "habit.adherence.avg7d",
+  },
+  habit_streak_broken: {
+    actionType: "resume_habit",
+    title: "Retome o hábito de onde parou",
+  },
+  stairs_below_target: {
+    actionType: "resume_habit",
+    title: "Encaixe as escadas que faltaram",
+  },
+  weight_plateau_low_adherence: {
+    actionType: "review_routine",
+    title: "Revise a adesão pra destravar o peso",
+    relatedGoalMetricId: "body.weight.avg7d",
+  },
 };
 
 // Mapeamento determinístico insight -> ação + priorização (docs/ENGINES.md):

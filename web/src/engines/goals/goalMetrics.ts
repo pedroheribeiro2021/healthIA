@@ -2,7 +2,10 @@ import type { DailySummary } from "@/domain/analytics";
 import type { Goal } from "@/domain/goals";
 import { mean } from "@/engines/analytics/stats/basic";
 
-type GoalMetricKind = "avg7d" | "latest";
+// 'sum7d' soma em vez de tirar média na janela de 7 dias — único jeito
+// honesto de expressar uma meta tipo "4 treinos por semana" (Fase 7,
+// docs/FASE-7-ROTINA.md, 1.4).
+type GoalMetricKind = "avg7d" | "latest" | "sum7d";
 
 type GoalMetricDef = {
   label: string;
@@ -46,6 +49,26 @@ export const GOAL_METRIC_DEFS: Record<string, GoalMetricDef> = {
     kind: "latest",
     extract: (s) => s.recoveryScore,
   },
+  // Fase 7 — habits/rotina (docs/FASE-7-ROTINA.md, 1.4). As três não exigem
+  // calculator novo no catálogo: GOAL_METRIC_DEFS é fonte independente do
+  // METRIC_CATALOG (metas leem daily_summary, não metric_snapshots) — só
+  // precisam que a coluna correspondente esteja populada em
+  // analyticsService.recomputeDay.
+  "habit.adherence.avg7d": {
+    label: "Adesão à rotina (média 7 dias)",
+    kind: "avg7d",
+    extract: (s) => s.habitAdherencePct,
+  },
+  "body.fatpct.avg7d": {
+    label: "Percentual de gordura (média 7 dias)",
+    kind: "avg7d",
+    extract: (s) => s.bodyFatPct,
+  },
+  "training.sessions.7d": {
+    label: "Treinos por semana",
+    kind: "sum7d",
+    extract: (s) => s.workouts,
+  },
 };
 
 export const GOAL_METRIC_OPTIONS = Object.entries(GOAL_METRIC_DEFS).map(
@@ -79,5 +102,10 @@ export function currentValueForGoal(
   const values = last7
     .map(def.extract)
     .filter((v): v is number => v !== null);
-  return values.length > 0 ? mean(values) : null;
+  if (values.length === 0) return null;
+
+  if (def.kind === "sum7d") {
+    return values.reduce((sum, v) => sum + v, 0);
+  }
+  return mean(values);
 }

@@ -21,6 +21,8 @@ function summary(day: string, overrides: Partial<DailySummary> = {}): DailySumma
     waterL: null,
     weightKg: null,
     recoveryScore: null,
+    habitAdherencePct: null,
+    bodyFatPct: null,
     computedAt: `${day}T12:00:00.000Z`,
     ...overrides,
   };
@@ -106,5 +108,38 @@ describe("currentValueForGoal", () => {
       [summary("2026-07-20")],
     );
     expect(value).toBeNull();
+  });
+
+  it("soma (não tira média) pra métrica sum7d (training.sessions.7d)", () => {
+    const summaries = [
+      summary("2026-07-14", { workouts: 1 }),
+      summary("2026-07-15", { workouts: 0 }),
+      summary("2026-07-16", { workouts: 1 }),
+      summary("2026-07-17", { workouts: 0 }),
+      summary("2026-07-18", { workouts: 1 }),
+      summary("2026-07-19", { workouts: 0 }),
+      summary("2026-07-20", { workouts: 1 }),
+    ];
+    const value = currentValueForGoal(
+      goal({ metricId: "training.sessions.7d" }),
+      summaries,
+    );
+    expect(value).toBe(4);
+  });
+
+  it("aceita habit.adherence.avg7d e body.fatpct.avg7d (Fase 7)", () => {
+    expect(isValidGoalMetricId("habit.adherence.avg7d")).toBe(true);
+    expect(isValidGoalMetricId("body.fatpct.avg7d")).toBe(true);
+
+    const summaries = [
+      summary("2026-07-19", { habitAdherencePct: 80, bodyFatPct: 22 }),
+      summary("2026-07-20", { habitAdherencePct: 90, bodyFatPct: 21.5 }),
+    ];
+    expect(
+      currentValueForGoal(goal({ metricId: "habit.adherence.avg7d" }), summaries),
+    ).toBe(85);
+    expect(
+      currentValueForGoal(goal({ metricId: "body.fatpct.avg7d" }), summaries),
+    ).toBeCloseTo(21.75, 4);
   });
 });

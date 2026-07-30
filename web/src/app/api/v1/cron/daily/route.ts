@@ -5,6 +5,7 @@ import { recomputeInsights } from "@/engines/insights/insightService";
 import { refreshRecommendations } from "@/engines/recommendations/recommendationService";
 import { createEventRepositoryFromClient } from "@/repositories/eventRepository";
 import { createGoalRepositoryFromClient } from "@/repositories/goalRepository";
+import { createHabitRepositoryFromClient } from "@/repositories/habitRepository";
 import { createInsightRepositoryFromClient } from "@/repositories/insightRepository";
 import { createMetricRepositoryFromClient } from "@/repositories/metricRepository";
 import { createRecommendationRepositoryFromClient } from "@/repositories/recommendationRepository";
@@ -29,17 +30,19 @@ export async function GET(request: Request) {
   const goalRepo = createGoalRepositoryFromClient(supabase);
   const insightRepo = createInsightRepositoryFromClient(supabase);
   const recommendationRepo = createRecommendationRepositoryFromClient(supabase);
+  const habitRepo = createHabitRepositoryFromClient(supabase);
 
   // Recalcula o dia anterior (docs/ARCHITECTURE.md) — quando o cron roda de
   // manhã, o dia de ontem já está completo (sono, treinos etc.). Pipeline
   // completa: Analytics -> Insights -> Recommendations (docs/ENGINES.md).
   const day = addDays(todayLocalDay(), -1);
-  const summary = await recomputeDay(eventRepo, metricRepo, day);
+  const summary = await recomputeDay(eventRepo, metricRepo, habitRepo, day);
   const insights = await recomputeInsights(
     eventRepo,
     metricRepo,
     goalRepo,
     insightRepo,
+    habitRepo,
     day,
   );
   const recommendations = await refreshRecommendations(

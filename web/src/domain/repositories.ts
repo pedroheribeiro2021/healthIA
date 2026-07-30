@@ -6,6 +6,7 @@ import type {
   NewMetricSnapshot,
 } from "./analytics";
 import type { Goal, NewGoalInput } from "./goals";
+import type { Habit, HabitLog, NewHabitLogInput } from "./habits";
 import type { EventType, HealthEvent, NewHealthEvent } from "./healthEvent";
 import type { Insight, NewInsight } from "./insights";
 import type {
@@ -112,6 +113,20 @@ export interface RecommendationRepository {
     id: number,
     status: Recommendation["status"],
   ): Promise<Recommendation>;
+}
+
+/**
+ * Hábitos (docs/FASE-7-ROTINA.md `habits`/`habit_logs`). `habit_logs` é
+ * mutável por dia (upsert + delete) — única exceção ao append-only do
+ * schema, ver ADR-005. Implementação concreta em
+ * repositories/habitRepository.ts.
+ */
+export interface HabitRepository {
+  listActiveHabits(): Promise<Habit[]>;
+  // Janela [from, to] inclusive, todos os hábitos (usado pra streak/semana).
+  listLogs(params: { from: string; to: string }): Promise<HabitLog[]>;
+  upsertLog(habitId: number, input: NewHabitLogInput): Promise<HabitLog>;
+  deleteLog(habitId: number, day: string): Promise<void>;
 }
 
 /**
