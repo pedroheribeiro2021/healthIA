@@ -35,7 +35,7 @@ export function RecoveryTrendChart({ series }: { series: TimeSeries }) {
   return (
     <div className="h-40 w-full max-w-md">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid
             strokeDasharray="3 3"
             className="stroke-neutral-200 dark:stroke-neutral-800"
@@ -46,7 +46,8 @@ export function RecoveryTrendChart({ series }: { series: TimeSeries }) {
           <Line
             type="monotone"
             dataKey="score"
-            stroke="#171717"
+            stroke="currentColor"
+            className="text-neutral-900 dark:text-neutral-100"
             strokeWidth={2}
             dot={{ r: 2 }}
             connectNulls

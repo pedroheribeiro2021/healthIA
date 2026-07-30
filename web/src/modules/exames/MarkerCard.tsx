@@ -67,7 +67,7 @@ export function MarkerCard({
       {points.length > 1 && (
         <div className="mt-2 h-24 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <CartesianGrid
                 strokeDasharray="3 3"
                 className="stroke-neutral-200 dark:stroke-neutral-800"
@@ -78,7 +78,8 @@ export function MarkerCard({
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="#171717"
+                stroke="currentColor"
+                className="text-neutral-900 dark:text-neutral-100"
                 strokeWidth={2}
                 dot={{ r: 2 }}
               />

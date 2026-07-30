@@ -5,7 +5,30 @@
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
 - [ ] **Obter `GEMINI_API_KEY`** em [Google AI Studio](https://aistudio.google.com/apikey) (free tier) e configurar `AI_PROVIDER=gemini` + `GEMINI_API_KEY` na Vercel (Settings → Environment Variables) — sem isso o chat (`/chat`) fica indisponível em produção (o resto do app funciona normalmente). Validar também se `GEMINI_MODEL` precisa ser sobrescrito (default no código: `gemini-2.5-flash`, ver `notas/ADR/ADR-003-ai-providers-via-fetch-rest.md`) — modelo do free tier pode ter mudado desde a implementação.
 - [ ] Opcional: configurar `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` na Vercel se quiser trocar de provider (`AI_PROVIDER=anthropic|openai`) — nenhum dos dois foi testado contra a API real (só com `fetch` mockado).
-- [ ] **Confirmar merge de `fase-6-metas-relatorios-ia` em `main`** — mesma trava do classificador de auto mode do Claude Code (ação em `main` + dispara deploy de produção), pendente de confirmação explícita do Pedro.
+
+## Planejamento aberto em 2026-07-30 — Fase 7: Rotina, Hábitos e Navegação
+
+Diagnóstico feito com dado real de produção, especificação escrita em `docs/FASE-7-ROTINA.md` e `docs/PLANO-SAUDE.md`.
+
+**Achados do diagnóstico:**
+
+- [ ] **Sync do Health Connect parado desde 22/07/2026** (último `raw_records.received_at`). Passos pararam ainda antes, em 10/07. Hipótese principal: `expo-background-fetch` é best-effort no Android e todo sync que aconteceu foi manual — o app parou de ser aberto. Investigar antes de qualquer coisa (Etapa 0.2 da spec) e produzir um **veredito escrito**, sem construir sync novo.
+- [ ] **Dado de teste em produção**: `health_events` id 22365 (bioimpedância fictícia de 83,2 kg) e id 22366 (exame de vitamina D de teste), mais a receita de teste da Fase 5 e os itens de lista de compras. Remover via SQL administrativo como exceção única ao append-only, documentada em ADR-004. ⚠️ **Manter** o id 1 (peso manual 76,6 kg de 20/07) — é dado real.
+- [ ] **Bioimpedância real nunca importada**: a medição de 23/07/2026 (77,3 kg · 22,7 % gordura · 33,9 kg músculo esquelético) e as 5 anteriores desde fevereiro só existem no PDF. Importar as 6 via `POST /api/v1/imports/bioimpedance` (Etapa 0.4).
+- [ ] **Zero metas ativas** em `healthia.goals` — as regras `weight_trend_vs_goal` e `protein_below_target` do Insight Engine nunca dispararam por falta de meta, desde a Fase 4.
+
+**Decisões tomadas com o Pedro em 2026-07-30:**
+
+- Hábitos são **entidade de 1ª classe** (tabelas `habits`/`habit_logs`), não checkbox de UI nem `note` em `health_events` — para render streak, métrica de adesão, regra de insight e correlação.
+- `habit_logs` é **mutável por dia** (upsert + delete), única exceção ao append-only do schema — adesão é intenção corrigível, não medição. Registrar em ADR-005.
+- Escopo da fase: hábitos + metas + navegação. **Planejamento alimentar e cadastro das receitas ficam fora** — pendência da Fase 5 segue aberta.
+- Navegação reagrupada **por rotina** (Hoje · Plano · Evolução · Insights · Mais), não por fonte de dado. Registro vira FAB, não aba.
+
+## Resolvido em 2026-07-30 — Merge da Fase 6 em `main` (Etapa 0.1 da Fase 7)
+
+- [x] `fase-6-metas-relatorios-ia` mergeada em `main` via PR — telas `/metas`, `/relatorios` e `/chat` agora fazem parte de `main`.
+- [x] **Conflito de NavBar resolvido a favor de `main`**: a versão de 11 abas com rolagem horizontal trazida pela branch foi descartada; ficou a versão de 4 abas + `Mais` do commit `b16b780`. A Fase 7 (Etapa 2) reescreve o arquivo por completo.
+- [x] Sincronizadas todas as branches locais com o remoto antes de iniciar a Fase 7 (`fase-0-fundacao` só tinha um ponteiro desatualizado — o commit já estava em `main`; `fase-1` a `fase-6` e `legacy-local` já estavam em dia).
 
 ## Resolvido em 2026-07-22 — Fase 6: Metas, Relatórios e IA
 
