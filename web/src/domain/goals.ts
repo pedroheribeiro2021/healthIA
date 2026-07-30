@@ -1,13 +1,11 @@
 import { z } from "zod";
+import { localDaySchema } from "./analytics";
 import { isoDateTimeSchema as isoDateTime } from "./shared";
 
-// Tabela `goals` já existe desde a Fase 0 (docs/DATA_MODEL.md), mas a
-// criação de metas pelo usuário é escopo da Fase 6 ("Metas, Relatórios e
-// IA"). Aqui só o necessário pra Fase 4 ler metas ativas dentro das regras
-// de insight (ex.: weight_trend_vs_goal) — sem rota de criação ainda, então
-// hoje `listActiveGoals()` sempre retorna vazio em produção; fica pronto
-// para quando a Fase 6 adicionar a UI de metas (mesmo padrão do calculator
-// de HRV na Fase 3: implementado antes do dado existir).
+// Tabela `goals` já existe desde a Fase 0 (docs/DATA_MODEL.md). Leitura de
+// metas ativas é usada desde a Fase 4 pelas regras de insight (ex.:
+// weight_trend_vs_goal, protein_below_target). Criação/gestão de metas
+// pelo usuário é a Fase 6.
 export const goalDirectionSchema = z.enum(["increase", "decrease", "maintain"]);
 export type GoalDirection = z.infer<typeof goalDirectionSchema>;
 
@@ -21,3 +19,14 @@ export const goalSchema = z.object({
   createdAt: isoDateTime,
 });
 export type Goal = z.infer<typeof goalSchema>;
+
+// Validação estrutural apenas (shape). Quais `metricId` são aceitáveis como
+// meta é regra de negócio — vive em engines/goals/goalMetrics.ts
+// (isValidGoalMetricId), aplicada na rota, não aqui.
+export const newGoalInputSchema = z.object({
+  metricId: z.string().min(1),
+  targetValue: z.number(),
+  direction: goalDirectionSchema,
+  deadline: localDaySchema.nullable().optional(),
+});
+export type NewGoalInput = z.infer<typeof newGoalInputSchema>;

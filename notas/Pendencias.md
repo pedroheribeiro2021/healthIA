@@ -3,12 +3,12 @@
 ## Ação do Pedro
 
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
-- [ ] **Confirmar merge de `fase-6-metas-relatorios-ia` em `main`** — a Fase 6 está implementada e testada na branch (234 testes verdes) mas **nunca foi mergeada**; as telas `/metas`, `/relatorios` e `/chat` não existem em produção. É o primeiro passo da Fase 7.
-- [ ] **Configurar `GEMINI_API_KEY`** (Google AI Studio) no projeto Vercel — sem ela o `/chat` da Fase 6 mostra "indisponível"; os 3 providers nunca foram testados contra API real.
+- [ ] **Obter `GEMINI_API_KEY`** em [Google AI Studio](https://aistudio.google.com/apikey) (free tier) e configurar `AI_PROVIDER=gemini` + `GEMINI_API_KEY` na Vercel (Settings → Environment Variables) — sem isso o chat (`/chat`) fica indisponível em produção (o resto do app funciona normalmente). Validar também se `GEMINI_MODEL` precisa ser sobrescrito (default no código: `gemini-2.5-flash`, ver `notas/ADR/ADR-003-ai-providers-via-fetch-rest.md`) — modelo do free tier pode ter mudado desde a implementação.
+- [ ] Opcional: configurar `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` na Vercel se quiser trocar de provider (`AI_PROVIDER=anthropic|openai`) — nenhum dos dois foi testado contra a API real (só com `fetch` mockado).
 
 ## Planejamento aberto em 2026-07-30 — Fase 7: Rotina, Hábitos e Navegação
 
-Diagnóstico feito com dado real de produção, especificação escrita em `docs/FASE-7-ROTINA.md` e `docs/PLANO-SAUDE.md`. Nenhum código escrito ainda.
+Diagnóstico feito com dado real de produção, especificação escrita em `docs/FASE-7-ROTINA.md` e `docs/PLANO-SAUDE.md`.
 
 **Achados do diagnóstico:**
 
@@ -16,7 +16,6 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
 - [ ] **Dado de teste em produção**: `health_events` id 22365 (bioimpedância fictícia de 83,2 kg) e id 22366 (exame de vitamina D de teste), mais a receita de teste da Fase 5 e os itens de lista de compras. Remover via SQL administrativo como exceção única ao append-only, documentada em ADR-004. ⚠️ **Manter** o id 1 (peso manual 76,6 kg de 20/07) — é dado real.
 - [ ] **Bioimpedância real nunca importada**: a medição de 23/07/2026 (77,3 kg · 22,7 % gordura · 33,9 kg músculo esquelético) e as 5 anteriores desde fevereiro só existem no PDF. Importar as 6 via `POST /api/v1/imports/bioimpedance` (Etapa 0.4).
 - [ ] **Zero metas ativas** em `healthia.goals` — as regras `weight_trend_vs_goal` e `protein_below_target` do Insight Engine nunca dispararam por falta de meta, desde a Fase 4.
-- [ ] **Conflito de NavBar no merge da Fase 6**: a branch carrega a versão antiga de 11 abas com rolagem horizontal, que o commit `b16b780` em `main` já tinha corrigido. Resolver a favor de `main` no merge; a Fase 7 reescreve o arquivo depois.
 
 **Decisões tomadas com o Pedro em 2026-07-30:**
 
@@ -24,6 +23,21 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
 - `habit_logs` é **mutável por dia** (upsert + delete), única exceção ao append-only do schema — adesão é intenção corrigível, não medição. Registrar em ADR-005.
 - Escopo da fase: hábitos + metas + navegação. **Planejamento alimentar e cadastro das receitas ficam fora** — pendência da Fase 5 segue aberta.
 - Navegação reagrupada **por rotina** (Hoje · Plano · Evolução · Insights · Mais), não por fonte de dado. Registro vira FAB, não aba.
+
+## Resolvido em 2026-07-30 — Merge da Fase 6 em `main` (Etapa 0.1 da Fase 7)
+
+- [x] `fase-6-metas-relatorios-ia` mergeada em `main` via PR — telas `/metas`, `/relatorios` e `/chat` agora fazem parte de `main`.
+- [x] **Conflito de NavBar resolvido a favor de `main`**: a versão de 11 abas com rolagem horizontal trazida pela branch foi descartada; ficou a versão de 4 abas + `Mais` do commit `b16b780`. A Fase 7 (Etapa 2) reescreve o arquivo por completo.
+- [x] Sincronizadas todas as branches locais com o remoto antes de iniciar a Fase 7 (`fase-0-fundacao` só tinha um ponteiro desatualizado — o commit já estava em `main`; `fase-1` a `fase-6` e `legacy-local` já estavam em dia).
+
+## Resolvido em 2026-07-22 — Fase 6: Metas, Relatórios e IA
+
+- [x] **Metas**: `POST/GET /api/v1/goals` + `POST /api/v1/goals/{id}/deactivate`, tela `/metas` (criar meta com métrica/direção/valor/prazo, ver valor atual calculado de `daily_summary`, desativar sem hard delete). `engines/goals/goalMetrics.ts` cura 6 métricas aceitáveis como meta (sono, FC repouso, HRV, peso, proteína, recovery) — não o catálogo completo de 18 `metric_id`, decisão consciente de escopo (ver `docs/ROADMAP.md`). Isso também é o que já ativava as regras `weight_trend_vs_goal`/`protein_below_target` da Fase 4, que até aqui sempre retornavam null por falta de meta cadastrada.
+- [x] **Relatórios**: `GET /api/v1/reports?type=weekly|monthly`, tela `/relatorios` com toggle — computado on-demand a partir de `daily_summary` via `compare()`/`analyzeTrend()` já existentes (Fase 3/4), sem tabela nova nem cálculo novo.
+- [x] **AI Engine**: adapter (`engines/ai/adapter.ts`) + 3 providers via `fetch` direto às APIs REST (Gemini default, Anthropic, OpenAI — ver ADR-003) + parser SSE compartilhado; `ContextBuilder` (puro) monta o prompt só com dados já calculados (daily_summary, insights, recomendações, metas — nunca eventos brutos); `POST /api/v1/ai/chat` com streaming SSE; tela `/chat` efêmera (sem persistência de histórico, decisão consciente de escopo). Links "Perguntar à IA" em `/insights` e "Sugerir receita com IA" em `/nutricao`.
+- [x] 234 testes, `typecheck`/`lint`/`build` verdes. **Verificado com dado real de produção via browser**: meta de peso criada (75kg) mostrou "Atual: 76.6 kg" reais, desativação funcionou; `/relatorios` semanal mostrou números reais (Recovery 48 vs 69, sono 6.3h vs 6.5h, etc.) batendo com o que os módulos Sono/Exercícios já mostravam; `/chat` sem chave configurada mostrou o estado indisponível corretamente, sem quebrar o resto do app; link "Perguntar à IA" de um insight real (`vitamin_d fora da faixa`) navegou com a pergunta pré-preenchida. **Não testado com resposta real de um provider de IA** — falta o Pedro configurar `GEMINI_API_KEY` (ver Ação do Pedro acima) pra validar o critério de pronto ("cita números reais") de ponta a ponta.
+- [x] **Fase 6 considerada pronta** pelo critério do roadmap (`docs/ROADMAP.md` atualizado).
+- [x] Confirmado via `git log` que Pedro já tinha mergeado `fase-5-corpo-nutricao-exames` → `main` (PR #7) antes do início desta sessão — o item de pendência que pedia essa confirmação estava desatualizado.
 
 ## Resolvido em 2026-07-21 (4) — Fase 5: Corpo, Nutrição e Exames
 
@@ -117,14 +131,14 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
 
 - Schema Supabase dedicado `healthia` dentro do projeto `rachaconta` (não um projeto Supabase novo — org já estava no limite de 2 projetos free). Detalhe em `notas/ADR/ADR-002-schema-compartilhado-supabase.md`.
 
-## Depois (Fase 6)
+## Backlog (pós Fase 6)
 
-- [ ] Fase 6 — Metas, Relatórios e IA (metas por métrica — ativa `weight_trend_vs_goal`/`protein_below_target` do Insight Engine —, relatório semanal/mensal, AI Engine com adapter + Gemini default, chat com streaming, explicação de insights, sugestão de receitas dentro dos macros).
 - [ ] Planejamento alimentar de verdade (vínculo receita↔refeição registrada, calendário) — ficou fora da Fase 5 por não fazer parte do critério de pronto; hoje registrar uma refeição e cadastrar uma receita são fluxos separados.
 - [ ] Expandir a base de alimentos (`healthia.foods`) além do seed curado de 93 itens da Fase 5, se o Pedro sentir falta de algum alimento nas receitas — é uma tabela de domínio comum, dá pra inserir mais linhas sem migration.
 - [ ] Unidade de ingrediente de receita além de grama (hoje só "quantidade em gramas" — ex.: "1 unidade" de ovo exige o Pedro estimar o peso).
+- [ ] Persistir histórico de chat, se o Pedro sentir falta — hoje é efêmero por decisão consciente de escopo (ver `docs/ROADMAP.md` Fase 6).
+- [ ] Expandir o conjunto curado de métricas aceitáveis como meta (`engines/goals/goalMetrics.ts`) se o Pedro quiser uma meta em cima de outra métrica do catálogo.
 
 ## Decisões pendentes
 
-- [ ] Modelo Gemini do free tier a usar no chat (validar na Fase 6)
 - [ ] Estratégia de backup: GitHub Action semanal com pg_dump (ainda não definida; sem prazo fixo agora que a Fase 1 fechou)

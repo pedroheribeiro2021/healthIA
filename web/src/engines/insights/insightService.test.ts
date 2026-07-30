@@ -71,6 +71,15 @@ function createFakeGoalRepository(goals: Goal[]): GoalRepository {
     async listActiveGoals() {
       return goals;
     },
+    async listGoals() {
+      throw new Error("não usado neste teste");
+    },
+    async createGoal() {
+      throw new Error("não usado neste teste");
+    },
+    async deactivateGoal() {
+      throw new Error("não usado neste teste");
+    },
   };
 }
 

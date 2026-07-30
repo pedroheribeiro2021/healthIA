@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { NewRecipeForm } from "@/modules/nutricao/NewRecipeForm";
 import { RecipeList } from "@/modules/nutricao/RecipeList";
 import { ShoppingList } from "@/modules/nutricao/ShoppingList";
@@ -27,6 +28,13 @@ export default async function NutricaoPage() {
       </section>
 
       <NewRecipeForm />
+
+      <Link
+        href={`/chat?q=${encodeURIComponent("Sugira uma receita pra hoje dentro dos macros que ainda faltam, baseado no meu resumo diário.")}`}
+        className="w-full max-w-md rounded-xl border border-dashed border-neutral-300 p-4 text-center text-sm font-medium text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
+      >
+        Sugerir receita com IA →
+      </Link>
 
       <ShoppingList items={shoppingListItems} />
     </main>

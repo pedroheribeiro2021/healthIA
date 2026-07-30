@@ -5,7 +5,7 @@ import type {
   NewDailySummary,
   NewMetricSnapshot,
 } from "./analytics";
-import type { Goal } from "./goals";
+import type { Goal, NewGoalInput } from "./goals";
 import type { EventType, HealthEvent, NewHealthEvent } from "./healthEvent";
 import type { Insight, NewInsight } from "./insights";
 import type {
@@ -70,12 +70,15 @@ export interface MetricRepository {
 }
 
 /**
- * Leitura de metas (docs/DATA_MODEL.md `goals`). Só o necessário pra Fase 4
- * (regras de insight lerem metas ativas) — criação de metas é Fase 6.
+ * Metas (docs/DATA_MODEL.md `goals`). `listActiveGoals` é usado desde a
+ * Fase 4 pelas regras de insight; criação/gestão é Fase 6.
  * Implementação concreta em repositories/goalRepository.ts.
  */
 export interface GoalRepository {
   listActiveGoals(): Promise<Goal[]>;
+  listGoals(): Promise<Goal[]>;
+  createGoal(input: NewGoalInput): Promise<Goal>;
+  deactivateGoal(id: number): Promise<Goal>;
 }
 
 /**
