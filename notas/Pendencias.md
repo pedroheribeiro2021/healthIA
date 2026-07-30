@@ -20,9 +20,9 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
   - **Corrigido nesta sessão**: `index.ts` agora importa `src/background/backgroundSync.ts` por efeito colateral antes de `registerRootComponent` (garante `defineTask` mesmo em boot headless); `src/lib/supabase.ts` amarra `AppState` a `startAutoRefresh()`/`stopAutoRefresh()`. `npm run typecheck` verde em `sync-app/`.
   - ⚠️ **Falta validar de verdade**: só dá pra confirmar que o sync automático voltou a rodar sozinho com um build novo. Pedro precisa gerar um build de desenvolvimento novo (`eas build --profile development`), reinstalar no Android, deixar o app minimizado (sem abrir) por algumas horas e conferir se `raw_records.received_at` avança sem intervenção manual.
   - Risco separado (não corrigido agora, não é a causa raiz): a fila local (`src/lib/queue.ts`) marca o lote inteiro como enviado sempre que a API responde HTTP 200, mesmo que o corpo da resposta reporte itens individuais como `failed` — pode mascarar perda pontual de registros. Registrado aqui como pendência futura, fora do escopo da Fase 7.
-- [ ] **Dado de teste em produção**: `health_events` id 22365 (bioimpedância fictícia de 83,2 kg) e id 22366 (exame de vitamina D de teste), mais a receita de teste da Fase 5 e os itens de lista de compras. Remover via SQL administrativo como exceção única ao append-only, documentada em ADR-004. ⚠️ **Manter** o id 1 (peso manual 76,6 kg de 20/07) — é dado real.
+- [ ] **Dado de teste em produção**: `health_events` id 22365 (bioimpedância fictícia de 83,2 kg) e id 22366 (exame de vitamina D de teste), mais a receita de teste da Fase 5 e os itens de lista de compras. Remover via SQL administrativo como exceção única ao append-only, documentada em ADR-004. ⚠️ **Manter** o id 1 (peso manual 76,6 kg de 20/07) — é dado real. **Atualização 30/07:** esta sessão descobriu acesso direto ao banco via `supabase db query --linked` (mesmo projeto usado pra aplicar as migrations 008/009) — a execução ainda não aconteceu (falta mostrar o SELECT de verificação do ADR-004 e esperar confirmação, checkpoint 3 do `INICIAR-FASE-7.md`), mas o bloqueio de "sem acesso administrativo" registrado antes não é mais real.
 - [ ] **Bioimpedância real nunca importada**: a medição de 23/07/2026 (77,3 kg · 22,7 % gordura · 33,9 kg músculo esquelético) e as 5 anteriores desde fevereiro só existem no PDF. Importar as 6 via `POST /api/v1/imports/bioimpedance` (Etapa 0.4).
-- [ ] **Zero metas ativas** em `healthia.goals` — as regras `weight_trend_vs_goal` e `protein_below_target` do Insight Engine nunca dispararam por falta de meta, desde a Fase 4.
+- [x] **Zero metas ativas** em `healthia.goals` — resolvido pela migration 009 (30/07): 4 metas do plano semeadas (peso 73,5kg, gordura 17,5%, adesão 85%, treinos 4x/semana). A meta antiga de peso (75kg, criada durante testes da Fase 6) já estava desativada — sem conflito.
 
 **Decisões tomadas com o Pedro em 2026-07-30:**
 
@@ -30,6 +30,18 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
 - `habit_logs` é **mutável por dia** (upsert + delete), única exceção ao append-only do schema — adesão é intenção corrigível, não medição. Registrar em ADR-005.
 - Escopo da fase: hábitos + metas + navegação. **Planejamento alimentar e cadastro das receitas ficam fora** — pendência da Fase 5 segue aberta.
 - Navegação reagrupada **por rotina** (Hoje · Plano · Evolução · Insights · Mais), não por fonte de dado. Registro vira FAB, não aba.
+
+## Resolvido em 2026-07-30 — Fase 7 Etapa 1: Hábitos, Metas e Check-in
+
+- [x] **Migrations 008/009 aplicadas em produção**: tabelas `habits`/`habit_logs` (RLS + grants, `DELETE` só em `habit_logs` — ADR-005), colunas `habit_adherence_pct`/`body_fat_pct` em `daily_summary`, seed dos 9 hábitos e 4 metas de `docs/PLANO-SAUDE.md`. Aplicadas via `supabase db query --linked --file` (não `db push` — o projeto é compartilhado com outros apps, `db push` exigiria marcar dezenas de migrations de outros apps como "revertidas"; evitado de propósito, ver decisão abaixo).
+- [x] **Engines**: `engines/habits/` (hábitos derivados de `health_events`, streak e contagem semanal on-demand, exclusão do denominador por meta semanal já batida), `engines/analytics/calculators/habits.ts` (`habit.adherence.daily`, rollup `avg7d`), `engines/goals/goalMetrics.ts` estendido (`kind` `sum7d` + `habit.adherence.avg7d`/`body.fatpct.avg7d`/`training.sessions.7d`), 4 regras de insight novas.
+- [x] **API**: `GET /api/v1/habits`, `POST`/`DELETE /api/v1/habits/{slug}/log` (409 pra hábito `derived`), `GET /api/v1/habits/week`.
+- [x] **UI**: check-in na home (`CheckinCard`, toggle/stepper/barra de adesão/streak), tela `/plano` (metas + grade semanal + referências estáticas de `content/planoSaude.ts`). `NavBar` não mudou — fica pra Etapa 2.
+- [x] 279 testes (45 novos), `typecheck`/`lint`/`build` verdes. PR #13 mergeado em `main`.
+- [x] ADR-005 registrado (`notas/ADR/ADR-005-habit-logs-mutavel-por-dia.md`).
+- ⚠️ **Falta rodar `POST /api/v1/admin/recompute` do dia de hoje** pra `habit_adherence_pct`/`body_fat_pct` de hoje serem populados pela primeira vez — precisa de sessão autenticada como Pedro (não tenho `service_role` nem sessão de browser nesta sessão). O cron diário resolve isso sozinho a partir de amanhã (recalcula "ontem" toda manhã).
+
+**Decisão registrada nesta sessão:** para este projeto Supabase compartilhado (`rachaconta`), `supabase db push` não é seguro — o histórico de migrations do CLI é por-projeto, não por-app, e tentar sincronizar force o assistente a marcar migrations de outros apps (rumo, rachaconta, zerosheet) como revertidas. O caminho usado (e a se repetir): `supabase db query --linked --file <migration>.sql`, aplicando o SQL direto sem tocar no histórico de terceiros. Vale registrar no vault Obsidian (`Infra-Cloud-Compartilhada.md`) por ser cross-project.
 
 ## Resolvido em 2026-07-30 — Merge da Fase 6 em `main` (Etapa 0.1 da Fase 7)
 
