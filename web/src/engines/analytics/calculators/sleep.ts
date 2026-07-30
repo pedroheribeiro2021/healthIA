@@ -17,7 +17,7 @@ type SleepDetail = {
 // noite" faz sentido responder. Com mais de uma sessão no dia (soneca +
 // sono principal), usa a de maior duração; as demais ficam registradas em
 // detail.otherSessions para não perder o dado.
-function findSleepSessionForDay(
+export function findSleepSessionForDay(
   events: HealthEvent[],
   period: Period,
 ): { session: HealthEvent; otherSessions: number } | null {
@@ -89,7 +89,7 @@ export function computeSleepEfficiencyDaily(
 // desloca a referência pro lado oposto do relógio de onde caem horários
 // típicos de dormir (22h-03h), evitando o problema de virada de meia-noite
 // numa média simples (23:30 e 00:30 ficariam em lados opostos da escala).
-function minutesSinceLocalNoon(isoInstant: string): number {
+export function minutesSinceLocalNoon(isoInstant: string): number {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Sao_Paulo",
     hour: "2-digit",

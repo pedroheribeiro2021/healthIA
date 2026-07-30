@@ -106,6 +106,17 @@ export const METRIC_CATALOG: readonly MetricCatalogEntry[] = [
     description: "Score composto de recuperação (0-100, v1)",
     requiredEventTypes: [],
   },
+  {
+    id: "habit.adherence.daily",
+    description:
+      "% dos hábitos core esperados hoje que foram cumpridos (Fase 7)",
+    requiredEventTypes: [],
+  },
+  {
+    id: "habit.adherence.avg7d",
+    description: "Adesão aos hábitos, média dos últimos 7 dias",
+    requiredEventTypes: [],
+  },
 ] as const;
 
 export type MetricId = (typeof METRIC_CATALOG)[number]["id"];

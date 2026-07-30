@@ -9,6 +9,7 @@ import type { Insight } from "@/domain/insights";
 import type {
   EventRepository,
   GoalRepository,
+  HabitRepository,
   InsightRepository,
   MetricRepository,
 } from "@/domain/repositories";
@@ -49,11 +50,15 @@ const RECENT_WORKOUTS_WINDOW_DAYS = 14;
 // Sem import de exames ainda (Fase 5) — janela generosa já deixa pronto
 // pra quando existir, sem crescer sem limite indefinidamente.
 const RECENT_LAB_RESULTS_WINDOW_DAYS = 400;
+// Suficiente pra streak >=7 (habit_streak_broken) e pra semana fechada
+// anterior à atual (stairs_below_target) com folga.
+const RECENT_HABIT_LOGS_WINDOW_DAYS = 21;
 
 async function buildMetricStore(
   eventRepo: EventRepository,
   metricRepo: MetricRepository,
   goalRepo: GoalRepository,
+  habitRepo: HabitRepository,
   day: LocalDay,
 ): Promise<MetricStore> {
   const period = localDayBounds(day);
@@ -69,6 +74,8 @@ async function buildMetricStore(
     recentWorkouts,
     recentLabResults,
     activeGoals,
+    habits,
+    recentHabitLogs,
   ] = await Promise.all([
     metricRepo.getDailySummary(day),
     metricRepo.listDailySummaries({ from: addDays(day, -29), to: day }),
@@ -106,6 +113,11 @@ async function buildMetricStore(
       to: period.end,
     }),
     goalRepo.listActiveGoals(),
+    habitRepo.listActiveHabits(),
+    habitRepo.listLogs({
+      from: addDays(day, -RECENT_HABIT_LOGS_WINDOW_DAYS),
+      to: day,
+    }),
   ]);
 
   const metricSeries: Record<string, TimeSeries> = {
@@ -145,6 +157,8 @@ async function buildMetricStore(
     recentWorkouts,
     recentLabResults: Array.from(recentLabResultsByMarker.values()),
     activeGoals,
+    habits,
+    recentHabitLogs,
   };
 }
 
@@ -159,9 +173,10 @@ export async function recomputeInsights(
   metricRepo: MetricRepository,
   goalRepo: GoalRepository,
   insightRepo: InsightRepository,
+  habitRepo: HabitRepository,
   day: LocalDay,
 ): Promise<Insight[]> {
-  const store = await buildMetricStore(eventRepo, metricRepo, goalRepo, day);
+  const store = await buildMetricStore(eventRepo, metricRepo, goalRepo, habitRepo, day);
   const triggered = evaluateInsightRules(store);
 
   const persisted: Insight[] = [];

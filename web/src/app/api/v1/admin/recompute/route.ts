@@ -7,6 +7,7 @@ import { recomputeInsights } from "@/engines/insights/insightService";
 import { refreshRecommendations } from "@/engines/recommendations/recommendationService";
 import { createEventRepositoryFromClient } from "@/repositories/eventRepository";
 import { createGoalRepositoryFromClient } from "@/repositories/goalRepository";
+import { createHabitRepositoryFromClient } from "@/repositories/habitRepository";
 import { createInsightRepositoryFromClient } from "@/repositories/insightRepository";
 import { createMetricRepositoryFromClient } from "@/repositories/metricRepository";
 import { createRecommendationRepositoryFromClient } from "@/repositories/recommendationRepository";
@@ -49,9 +50,10 @@ export async function POST(request: Request) {
   const goalRepo = createGoalRepositoryFromClient(auth.client);
   const insightRepo = createInsightRepositoryFromClient(auth.client);
   const recommendationRepo = createRecommendationRepositoryFromClient(auth.client);
+  const habitRepo = createHabitRepositoryFromClient(auth.client);
 
   const { from, to } = parsed.data;
-  const analyticsResult = await recomputeRange(eventRepo, metricRepo, from, to);
+  const analyticsResult = await recomputeRange(eventRepo, metricRepo, habitRepo, from, to);
 
   let day = from;
   let insightsTriggered = 0;
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
       metricRepo,
       goalRepo,
       insightRepo,
+      habitRepo,
       day,
     );
     insightsTriggered += insights.length;

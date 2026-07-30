@@ -20,6 +20,8 @@ function summary(day: string, overrides: Partial<DailySummary> = {}): DailySumma
     waterL: null,
     weightKg: null,
     recoveryScore: null,
+    habitAdherencePct: null,
+    bodyFatPct: null,
     computedAt: `${day}T12:00:00.000Z`,
     ...overrides,
   };

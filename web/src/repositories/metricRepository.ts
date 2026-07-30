@@ -45,6 +45,8 @@ function toDailySummary(row: {
   water_l: number | null;
   weight_kg: number | null;
   recovery_score: number | null;
+  habit_adherence_pct: number | null;
+  body_fat_pct: number | null;
   computed_at: string;
 }): DailySummary {
   return {
@@ -61,6 +63,8 @@ function toDailySummary(row: {
     waterL: row.water_l,
     weightKg: row.weight_kg,
     recoveryScore: row.recovery_score,
+    habitAdherencePct: row.habit_adherence_pct,
+    bodyFatPct: row.body_fat_pct,
     computedAt: row.computed_at,
   };
 }
@@ -130,6 +134,8 @@ export function createMetricRepositoryFromClient(
             water_l: summary.waterL,
             weight_kg: summary.weightKg,
             recovery_score: summary.recoveryScore,
+            habit_adherence_pct: summary.habitAdherencePct,
+            body_fat_pct: summary.bodyFatPct,
           },
           { onConflict: "day" },
         )

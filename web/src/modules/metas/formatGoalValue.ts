@@ -14,6 +14,12 @@ export function formatGoalValue(metricId: string, value: number): string {
       return `${value.toFixed(0)} g`;
     case "recovery.score.daily":
       return value.toFixed(0);
+    case "habit.adherence.avg7d":
+      return `${value.toFixed(0)}%`;
+    case "body.fatpct.avg7d":
+      return `${value.toFixed(1)}%`;
+    case "training.sessions.7d":
+      return `${value.toFixed(0)}x/semana`;
     default:
       return value.toFixed(1);
   }
@@ -35,6 +41,11 @@ export function goalInputUnitLabel(metricId: string): string {
       return "g";
     case "recovery.score.daily":
       return "score 0-100";
+    case "habit.adherence.avg7d":
+    case "body.fatpct.avg7d":
+      return "%";
+    case "training.sessions.7d":
+      return "vezes/semana";
     default:
       return "";
   }

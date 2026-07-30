@@ -5,7 +5,20 @@ import type {
   NewDailySummary,
   NewMetricSnapshot,
 } from "@/domain/analytics";
-import type { EventRepository, MetricRepository } from "@/domain/repositories";
+import type {
+  EventRepository,
+  HabitRepository,
+  MetricRepository,
+} from "@/domain/repositories";
+import { computeHabitAdherenceDaily } from "@/engines/analytics/calculators/habits";
+import {
+  isDerivedHabitSlug,
+  resolveDerivedHabit,
+} from "@/engines/habits/derivedHabits";
+import {
+  daysOfIsoWeek,
+  weeklyTargetAlreadyMetBeforeDay,
+} from "@/engines/habits/habitStats";
 import { computeAcwr } from "./calculators/acwr";
 import {
   computeBodyFatPctDaily,
@@ -43,6 +56,7 @@ async function listDailySnapshots(
 export async function recomputeDay(
   eventRepo: EventRepository,
   metricRepo: MetricRepository,
+  habitRepo: HabitRepository,
   day: LocalDay,
 ): Promise<DailySummary> {
   const period = localDayBounds(day);
@@ -54,6 +68,9 @@ export async function recomputeDay(
   const sleepWindowStart = localDayBounds(days7[0]).start;
   const heartRateWindowStart = localDayBounds(addDays(day, -1)).start;
   const windowEnd = localDayBounds(addDays(day, 1)).end;
+  // Semana ISO corrente, pra weeklyTargetAlreadyMetBeforeDay (habits com
+  // target_per_week < 7) — nunca mais de 6 dias antes de `day`.
+  const isoWeekStart = daysOfIsoWeek(day)[0];
 
   const [
     sleepEvents,
@@ -63,6 +80,9 @@ export async function recomputeDay(
     hrvEvents,
     stepsEvents,
     bodyCompositionEvents,
+    hydrationEvents,
+    activeHabits,
+    weekHabitLogs,
   ] = await Promise.all([
     eventRepo.listHealthEvents({
       eventType: "sleep_session",
@@ -99,6 +119,13 @@ export async function recomputeDay(
       from: period.start,
       to: period.end,
     }),
+    eventRepo.listHealthEvents({
+      eventType: "hydration",
+      from: period.start,
+      to: period.end,
+    }),
+    habitRepo.listActiveHabits(),
+    habitRepo.listLogs({ from: isoWeekStart, to: day }),
   ]);
 
   // 1) Calculators do dia — só dependem de health_events já buscados.
@@ -122,6 +149,30 @@ export async function recomputeDay(
   const bodyFatPctResult = computeBodyFatPctDaily(bodyCompositionEvents, period);
   const leanMassResult = computeLeanMassDaily(bodyCompositionEvents, period);
 
+  // Adesão do dia (Fase 7, docs/FASE-7-ROTINA.md 1.3): resolve cada hábito
+  // ativo (log manual OU derivado de health_events já buscados acima),
+  // excluindo do denominador quem já bateu a meta semanal antes de `day`.
+  const derivedEvents = [...workoutEvents, ...hydrationEvents, ...sleepEvents];
+  const habitStatuses = activeHabits
+    .filter((habit) => !weeklyTargetAlreadyMetBeforeDay(habit, weekHabitLogs, day))
+    .map((habit) => {
+      if (habit.sourceKind === "derived" && isDerivedHabitSlug(habit.slug)) {
+        const derived = resolveDerivedHabit(
+          habit.slug,
+          day,
+          period,
+          derivedEvents,
+          habit.targetPerDay,
+        );
+        return { habit, done: derived?.done ?? false };
+      }
+      const log = weekHabitLogs.find(
+        (l) => l.habitId === habit.id && l.day === day,
+      );
+      return { habit, done: log?.done ?? false };
+    });
+  const habitAdherenceResult = computeHabitAdherenceDaily(habitStatuses, period);
+
   await metricRepo.upsertMetricSnapshots([
     weightResult,
     sleepDurationResult,
@@ -132,6 +183,7 @@ export async function recomputeDay(
     bedtimeResult,
     bodyFatPctResult,
     leanMassResult,
+    habitAdherenceResult,
   ]);
 
   // 2) Rollups — precisam do histórico diário já persistido, incluindo o
@@ -145,6 +197,7 @@ export async function recomputeDay(
     hrvSnaps7,
     hrvSnaps60,
     loadSnaps28,
+    habitAdherenceSnaps7,
   ] = await Promise.all([
     listDailySnapshots(metricRepo, "body.weight.daily", days7),
     listDailySnapshots(metricRepo, "sleep.duration.daily", days7),
@@ -154,6 +207,7 @@ export async function recomputeDay(
     listDailySnapshots(metricRepo, "hrv.rmssd.daily", days7),
     listDailySnapshots(metricRepo, "hrv.rmssd.daily", days60),
     listDailySnapshots(metricRepo, "training.load.daily", days28),
+    listDailySnapshots(metricRepo, "habit.adherence.daily", days7),
   ]);
 
   const weightAvg7d = averageOverWindow(seriesFromDailySnapshots(weightSnaps7, days7));
@@ -171,6 +225,9 @@ export async function recomputeDay(
   );
   const loadSeries28 = seriesFromDailySnapshots(loadSnaps28, days28);
   const acwrResult = computeAcwr(loadSeries28, period);
+  const habitAdherenceAvg7d = averageOverWindow(
+    seriesFromDailySnapshots(habitAdherenceSnaps7, days7),
+  );
 
   const rollupSnapshots: NewMetricSnapshot[] = [
     rollupResult("body.weight.avg7d", period, weightAvg7d),
@@ -180,6 +237,7 @@ export async function recomputeDay(
     rollupResult("hr.resting.baseline60d", period, restingHrBaseline60d),
     rollupResult("hrv.rmssd.avg7d", period, hrvAvg7d),
     rollupResult("hrv.rmssd.baseline60d", period, hrvBaseline60d),
+    rollupResult("habit.adherence.avg7d", period, habitAdherenceAvg7d),
     acwrResult,
   ];
   await metricRepo.upsertMetricSnapshots(rollupSnapshots);
@@ -222,6 +280,8 @@ export async function recomputeDay(
     waterL: null,
     weightKg: weightResult.value,
     recoveryScore: recoveryResult.value,
+    habitAdherencePct: habitAdherenceResult.value,
+    bodyFatPct: bodyFatPctResult.value,
   };
 
   return metricRepo.upsertDailySummary(summary);
@@ -230,13 +290,14 @@ export async function recomputeDay(
 export async function recomputeRange(
   eventRepo: EventRepository,
   metricRepo: MetricRepository,
+  habitRepo: HabitRepository,
   from: LocalDay,
   to: LocalDay,
 ): Promise<{ daysProcessed: number }> {
   let day = from;
   let daysProcessed = 0;
   while (day <= to) {
-    await recomputeDay(eventRepo, metricRepo, day);
+    await recomputeDay(eventRepo, metricRepo, habitRepo, day);
     daysProcessed++;
     day = addDays(day, 1);
   }

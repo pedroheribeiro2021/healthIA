@@ -15,6 +15,8 @@ function baseStore(overrides: Partial<MetricStore> = {}): MetricStore {
     recentWorkouts: [],
     recentLabResults: [],
     activeGoals: [],
+    habits: [],
+    recentHabitLogs: [],
     ...overrides,
   };
 }

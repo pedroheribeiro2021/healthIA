@@ -58,6 +58,13 @@ export const dailySummarySchema = z.object({
   waterL: z.number().nullable(),
   weightKg: z.number().nullable(),
   recoveryScore: z.number().nullable(),
+  // Aditivas da Fase 7 (habits): habitAdherencePct vem de
+  // engines/analytics/calculators/habits.ts; bodyFatPct só persiste o
+  // resultado do calculator body.fatpct.daily (Fase 5), que já existia mas
+  // nunca tinha coluna própria em daily_summary — metas leem daqui, não de
+  // metric_snapshots (engines/goals/goalMetrics.ts).
+  habitAdherencePct: z.number().nullable(),
+  bodyFatPct: z.number().nullable(),
   computedAt: isoDateTime,
 });
 export type DailySummary = z.infer<typeof dailySummarySchema>;
