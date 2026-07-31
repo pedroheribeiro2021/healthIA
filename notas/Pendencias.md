@@ -2,7 +2,7 @@
 
 ## Ação do Pedro
 
-- [ ] **Revisar e decidir sobre o merge de `fase-7-etapa-2-navegacao` → `main`** (dispara deploy) — Etapa 2 da Fase 7 (navegação por rotina: 5 abas, `/evolucao`, FAB de registro). Depois do merge, usar o app por uma semana normalmente é o que falta para fechar o critério 3 da Fase 7 (`habit.adherence.avg7d` com valor real).
+- [ ] **Usar o app normalmente por uma semana** a partir de 31/07/2026 — é o que falta para o critério 3 da Fase 7 (`habit.adherence.avg7d` com valor real e ao menos uma regra de insight de hábito disparando ou verificada como "não dispara porque a adesão está boa"). Não é uma tarefa técnica, é o próprio uso do produto.
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
 - [ ] **Obter `GEMINI_API_KEY`** em [Google AI Studio](https://aistudio.google.com/apikey) (free tier) e configurar `AI_PROVIDER=gemini` + `GEMINI_API_KEY` na Vercel (Settings → Environment Variables) — sem isso o chat (`/chat`) fica indisponível em produção (o resto do app funciona normalmente). Validar também se `GEMINI_MODEL` precisa ser sobrescrito (default no código: `gemini-2.5-flash`, ver `notas/ADR/ADR-003-ai-providers-via-fetch-rest.md`) — modelo do free tier pode ter mudado desde a implementação.
 - [ ] Opcional: configurar `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` na Vercel se quiser trocar de provider (`AI_PROVIDER=anthropic|openai`) — nenhum dos dois foi testado contra a API real (só com `fetch` mockado).
@@ -39,7 +39,7 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
 - [x] **Registro virou FAB** (`components/RegistroFab.tsx`, botão "+" flutuante ≥44px) na Hoje, em vez de aba; `/registro` continua existindo como rota.
 - [x] **`/mais`** ganhou Nutrição, Exames, Chat, Registro e o botão Sair (antes só nas telas Hoje/Registro).
 - [x] 279 testes, `typecheck`/`lint`/`build` verdes. **Verificado no browser contra produção real** (dev local, logado como `pedro@mail.com`): as 5 abas navegam e destacam corretamente (inclusive em sub-rotas de Evolução e Mais), sub-nav de `/evolucao` troca de seção sem perder a aba "Evolução" ativa, `/corpo` redireciona para `/evolucao/corpo`, FAB abre `/registro` e destaca "Mais", dark mode ok.
-- [x] Branch `fase-7-etapa-2-navegacao` criada a partir de `main`, commitada. **Não mergeada** — depende do Pedro revisar e decidir sobre o merge (dispara deploy).
+- [x] Branch `fase-7-etapa-2-navegacao` → PR #16 → **mergeada em `main`** em 31/07/2026. Deploy de produção confirmado `READY` na Vercel (commit `f767a73`, via MCP `list_deployments`).
 
 ## Resolvido em 2026-07-31 — Fase 7 Etapa 0.3: limpeza de dado de teste
 
