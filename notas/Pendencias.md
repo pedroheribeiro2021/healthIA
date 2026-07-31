@@ -22,7 +22,7 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
   - ⚠️ **Falta validar de verdade**: só dá pra confirmar que o sync automático voltou a rodar sozinho com um build novo. Pedro precisa gerar um build de desenvolvimento novo (`eas build --profile development`), reinstalar no Android, deixar o app minimizado (sem abrir) por algumas horas e conferir se `raw_records.received_at` avança sem intervenção manual.
   - Risco separado (não corrigido agora, não é a causa raiz): a fila local (`src/lib/queue.ts`) marca o lote inteiro como enviado sempre que a API responde HTTP 200, mesmo que o corpo da resposta reporte itens individuais como `failed` — pode mascarar perda pontual de registros. Registrado aqui como pendência futura, fora do escopo da Fase 7.
 - [x] **Dado de teste em produção** — removido em 31/07/2026 (ADR-004, seção "Execução"). Confirmado com o Pedro antes (SELECT de verificação, checkpoint 3). `health_events` id 1 (peso real) intacto.
-- [ ] **Bioimpedância real nunca importada**: a medição de 23/07/2026 (77,3 kg · 22,7 % gordura · 33,9 kg músculo esquelético) e as 5 anteriores desde fevereiro só existem no PDF. Importar as 6 via `POST /api/v1/imports/bioimpedance` (Etapa 0.4). **Bloqueado nesta sessão**: a spec exige usar a rota da API (não `INSERT` direto, pra exercitar a pipeline `raw_records → health_events` de verdade), e essa rota exige sessão autenticada como Pedro (cookie/Bearer) — o acesso que esta sessão tem é só ao banco via `supabase db query --linked` (SQL direto), não à API HTTP autenticada. Fica pro Pedro rodar via `/corpo` (se a UI tiver import) ou uma sessão futura com login em browser.
+- [x] **Bioimpedância real importada** (31/07/2026, Etapa 0.4) — as 6 medições de fev–jul/2026 (`docs/PLANO-SAUDE.md` §1) via `POST /api/v1/imports/bioimpedance`, uma chamada por medição, usando a sessão de browser já autenticada como `pedro@mail.com` (destravou o bloqueio anterior — a sessão de antes só tinha acesso SQL direto). `/corpo` confirmado mostrando a curva real de 26/02 a 23/07 com 22,7 % como valor mais recente e 59,8 kg de massa magra.
 - [x] **Zero metas ativas** em `healthia.goals` — resolvido pela migration 009 (30/07): 4 metas do plano semeadas (peso 73,5kg, gordura 17,5%, adesão 85%, treinos 4x/semana). A meta antiga de peso (75kg, criada durante testes da Fase 6) já estava desativada — sem conflito.
 
 **Decisões tomadas com o Pedro em 2026-07-30:**
@@ -31,6 +31,15 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
 - `habit_logs` é **mutável por dia** (upsert + delete), única exceção ao append-only do schema — adesão é intenção corrigível, não medição. Registrar em ADR-005.
 - Escopo da fase: hábitos + metas + navegação. **Planejamento alimentar e cadastro das receitas ficam fora** — pendência da Fase 5 segue aberta.
 - Navegação reagrupada **por rotina** (Hoje · Plano · Evolução · Insights · Mais), não por fonte de dado. Registro vira FAB, não aba.
+
+## Resolvido em 2026-07-31 — Fase 7 Etapa 0.4: import da bioimpedância real
+
+- [x] **Schema estendido** (`domain/bioimpedance.ts`, `normalization/bioimpedanceImport.ts`): campos aditivos e opcionais `skeletalMuscleKg`, `fatMassKg`, `visceralFatLevel`, `bmi` e a flag `estimated` (valor lido do gráfico histórico do laudo, não leitura direta do aparelho). 280 testes, `typecheck`/`lint`/`build` verdes.
+- [x] **As 6 medições importadas** via `POST /api/v1/imports/bioimpedance` (uma chamada por medição, na ordem cronológica), não `INSERT` direto — pipeline `raw_records → health_events` exercitada de verdade. As 5 antigas (26/02 a 23/06) entraram com `estimated: true` e só peso/músculo esquelético/massa de gordura/`%` gordura derivado (dados lidos do gráfico); a de 23/07 entrou com os valores exatos do laudo (`estimated: false`, incluindo massa magra, TMB, IMC e gordura visceral).
+- [x] **Destravado usando a sessão de browser já autenticada** como `pedro@mail.com` (aberta para verificar a Etapa 2 nesta mesma sessão) — não precisou da senha nem de `service_role`.
+- [x] `POST /api/v1/admin/recompute` rodado para o período (26/02 a 31/07) — camada derivada (`daily_summary`, `metric_snapshots`) recalculada.
+- [x] **Verificado no browser**: `/corpo` mostra a curva real de 6 pontos (26/02 a 23/07), "Gordura corporal 22,7%" e "Massa magra 59,8 kg" — critério de pronto da Etapa 0.4 batido. `/plano` mostra "sem dado suficiente" pras metas de peso/gordura (médias de 7 dias) — correto, não é bug: a leitura mais recente (23/07) está 8 dias fora da janela móvel de hoje (31/07).
+- [x] Branch `fase-7-etapa-0-4-bioimpedancia`, commit do schema; import em si não passa por PR (é dado real gravado via API, igual ao padrão de dado manual, não uma migration).
 
 ## Resolvido em 2026-07-31 — Fase 7 Etapa 2: Navegação por rotina
 

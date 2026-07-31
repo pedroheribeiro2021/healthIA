@@ -432,4 +432,23 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md). Pedro: revisar e mergear `fase-7-etapa-2-navegacao` → `main`. Depois disso, a Fase 7 só fecha de vez com a Etapa 0.4 (import de bioimpedância, bloqueada por sessão autenticada) e uma semana de uso real gerando `habit.adherence.avg7d`.
 
-**Merge confirmado pelo Pedro na mesma sessão**: PR #16 mergeado em `main` (commit `f767a73`), deploy de produção `READY` confirmado via MCP da Vercel (`list_deployments`). Etapa 2 da Fase 7 pronta. A contagem da semana de uso real (critério 3) começa a partir de 31/07/2026.
+**Merge confirmado pelo Pedro na mesma sessão**: PR #16 mergeado em `main` (commit `f767a73`), deploy de produção `READY` confirmado via MCP da Vercel (`list_deployments`). Etapa 2 da Fase 7 pronta.
+
+---
+
+## 2026-07-31 (3) — Fase 7 Etapa 0.4: import da bioimpedância real (destravada)
+
+**Objetivo:** a Etapa 0.4 estava bloqueada desde a sessão de 30/07 por falta de sessão HTTP autenticada como Pedro — mas a sessão de browser aberta nesta mesma sessão pra verificar a Etapa 2 (Chrome, dev local contra o Supabase de produção) continuava logada como `pedro@mail.com`. Isso destravou a etapa sem precisar da senha nem de `service_role`.
+
+**Realizado:**
+- **Schema estendido** (`domain/bioimpedance.ts`): campos aditivos opcionais `skeletalMuscleKg`, `fatMassKg`, `visceralFatLevel`, `bmi` e a flag `estimated` (true quando o valor veio arredondado do gráfico histórico do laudo InBody, não de leitura direta do aparelho) — exatamente os campos previstos em `docs/FASE-7-ROTINA.md` §0.4. `normalization/bioimpedanceImport.ts` propaga os campos novos pro `detail` do `health_event`. Testes atualizados (2 existentes, que checavam o shape exato do `detail` por igualdade, e 1 novo cobrindo os campos do laudo) — 280 testes, `typecheck`/`lint`/`build` verdes. Commitado na branch `fase-7-etapa-0-4-bioimpedancia`.
+- **Payloads das 6 medições preparados** a partir de `docs/PLANO-SAUDE.md` §1 (5 do gráfico histórico, arredondadas, `estimated: true`; a de 23/07 com os valores exatos da página principal do laudo, `estimated: false`) e **confirmados com o Pedro antes de qualquer gravação** — a operação escreve em `health_events`, que é append-only, então os 6 registros não são reversíveis sem outra exceção como a do ADR-004.
+- **Import executado**: `npm run dev` local (aponta pro Supabase de produção) + Chrome MCP, usando `javascript_tool` pra rodar `fetch()` autenticado (cookie de sessão real) direto na página, uma chamada `POST /api/v1/imports/bioimpedance` por medição, em ordem cronológica. Todas as 6 responderam `201`/`status: "normalized"` (ids de `health_events` 22367–22372). `POST /api/v1/admin/recompute` rodado pro período inteiro (26/02–31/07) — demorou 82s no servidor (acima do timeout de 45s do lado do browser pro `javascript_tool`, mas o log do `next dev` confirmou `200` depois de completar).
+- **Verificado no browser** (tab nova, pra evitar cache de RSC de uma renderização anterior sem os dados): `/corpo` mostra a curva real de 6 pontos entre 26/02 e 23/07, "Gordura corporal 22,7%" e "Massa magra 59,8 kg" — bate exatamente com o laudo. `/plano` mostra "sem dado suficiente" nas metas de peso/gordura (médias de 7 dias) — comportamento correto, não bug: a medição mais recente (23/07) cai 8 dias fora da janela móvel de hoje (31/07), então a média de 7 dias não tem pontos suficientes ainda.
+
+**Decisões:**
+- **Import via `fetch()` autenticado no console da página** (não script standalone, não `INSERT` direto) — reaproveita a rota real (`POST /api/v1/imports/bioimpedance`) e a pipeline `raw_records → health_events`/Normalization Engine de ponta a ponta, exatamente como a spec pediu, sem precisar de `service_role` nem da senha do Pedro.
+- **Confirmação explícita antes da gravação** — mesmo sendo o caminho "certo" (API real, não bypass), são 6 registros permanentes e meus valores vêm de transcrição manual do plano; medir duas vezes, cortar uma.
+- **Sem ADR novo**: diferente da limpeza de dado de teste (ADR-004), este import não quebra nenhuma garantia do schema — é gravação normal via API autenticada, o caminho que qualquer lançamento real (inclusive futuro, pelo formulário de `/corpo`) usa.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md). Com isso, todos os critérios de pronto da Fase 7 estão batidos exceto o 3 (uma semana de uso real gerando `habit.adherence.avg7d`), que só o tempo resolve.
