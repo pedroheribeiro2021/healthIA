@@ -389,3 +389,21 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - Confirmado com o Pedro antes de aplicar as migrations (checkpoint 4 do `INICIAR-FASE-7.md`) e antes de mergear o PR (dispara deploy).
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md). Falta rodar `POST /api/v1/admin/recompute` de hoje (precisa de sessão autenticada como Pedro) pra `habit_adherence_pct` de hoje aparecer pela primeira vez — o cron diário resolve isso sozinho a partir de amanhã. Etapa 0.3 (limpeza de dado de teste) e 0.4 (import de bioimpedância real) seguem pendentes, mas agora **são executáveis** — a sessão descobriu acesso via `supabase db query --linked`, só falta mostrar o SELECT de verificação (ADR-004) e esperar confirmação do Pedro. Depois disso, Etapa 2 (navegação por rotina) fecha a Fase 7.
+
+---
+
+## 2026-07-31 — Fase 7 Etapa 0.3: limpeza de dado de teste em produção
+
+**Objetivo:** executar a Etapa 0.3 de `docs/FASE-7-ROTINA.md` — remover o dado de teste identificado no ADR-004, seguindo o checkpoint 3 do `INICIAR-FASE-7.md` (mostrar a lista exata de ids e esperar confirmação antes de qualquer DELETE).
+
+**Realizado:**
+- SELECT de verificação rodado pra cada tabela afetada (`health_events`, `raw_records`, `recipes`, `recipe_ingredients`, `shopping_list_items`, `insights`, `recommendations`) via `supabase db query --linked`, confirmando exatamente os ids previstos no ADR-004 (nenhuma surpresa) — mostrado ao Pedro antes de qualquer DELETE.
+- Primeira tentativa de DELETE (dentro de uma transação, sem tocar em triggers) falhou: `trg_protect_raw_records` bloqueou o `DELETE` em `raw_records` com o erro esperado pelo próprio comentário da migration 001 ("rede de segurança mesmo contra service_role"). Como estava tudo numa transação só, nada foi commitado — confirmado por SELECT (recommendations/insights/recipes ainda no lugar).
+- Descoberto que `health_events` tem a mesma proteção (`trg_protect_health_events`). Confirmado com o Pedro (segundo checkpoint, específico pra esse passo extra) antes de desabilitar os dois triggers dentro de uma nova transação, rodar os `DELETE`s na ordem certa (filhos antes de pais; `health_events` antes de `raw_records`, por causa da FK), reabilitar os triggers e commitar. Confirmado depois: `tgenabled='O'` nos dois, e os 9 registros de teste sumiram enquanto `health_events` id 1 (peso real, 76,6kg de 20/07) permaneceu.
+- ADR-004 atualizado com a seção "Execução" (ids exatos, ordem, achado do trigger). `notas/Pendencias.md` atualizado (item marcado resolvido, achado do trigger documentado).
+
+**Decisões:**
+- Não usar `INSERT` direto nem contornar os triggers de forma permanente — a exceção ficou escopada à transação (disable → delete → enable → commit), preservando a garantia de append-only pro resto do sistema.
+- Etapa 0.4 (import de bioimpedância real) continua bloqueada por um motivo diferente: a spec exige `POST /api/v1/imports/bioimpedance` autenticado como Pedro, não `INSERT` direto — e o acesso desta sessão é só ao banco via SQL (`supabase db query --linked`), sem sessão HTTP autenticada do app. Registrado como pendência do Pedro, não tentado.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md). Etapa 0.4 (import de bioimpedância) segue com o Pedro. Depois dela, Etapa 2 (navegação por rotina) fecha a Fase 7.
