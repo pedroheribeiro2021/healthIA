@@ -431,3 +431,5 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - **Branch não mergeada nesta sessão** — segue o padrão das fases anteriores: fica pro Pedro revisar e decidir sobre o merge (dispara deploy). O critério 3 da Fase 7 (uma semana de uso real) só pode começar a ser observado depois do merge.
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md). Pedro: revisar e mergear `fase-7-etapa-2-navegacao` → `main`. Depois disso, a Fase 7 só fecha de vez com a Etapa 0.4 (import de bioimpedância, bloqueada por sessão autenticada) e uma semana de uso real gerando `habit.adherence.avg7d`.
+
+**Merge confirmado pelo Pedro na mesma sessão**: PR #16 mergeado em `main` (commit `f767a73`), deploy de produção `READY` confirmado via MCP da Vercel (`list_deployments`). Etapa 2 da Fase 7 pronta. A contagem da semana de uso real (critério 3) começa a partir de 31/07/2026.
