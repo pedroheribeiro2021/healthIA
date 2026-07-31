@@ -72,6 +72,8 @@ Motivação (diagnóstico de 30/07/2026, com dado real de produção): seis fase
 
 **Pronto quando:** abrir o app de manhã e marcar a rotina do dia leva menos de 15 segundos; `/plano` mostra as 4 metas com valor atual real; `/corpo` mostra a curva real de fev a jul (22,7 % como valor mais recente); nenhum dado de teste em produção; nenhuma tela a mais de dois toques. E, após uma semana de uso real, `habit.adherence.avg7d` tem valor — o único critério que não pode ser marcado no mesmo dia da implementação, e o único que prova que o app serve pra alguma coisa.
 
+**Status:** Etapas 0 (exceto 0.4, bloqueada — bioimpedância real segue só no PDF) e 1 prontas e em `main`. ✅ **Etapa 2 pronta** (31/07/2026): 5 abas (Hoje/Plano/Evolução/Insights/Mais) substituem as 7 antigas; `/evolucao` agrupa Corpo/Sono/Exercícios/Relatórios sob sub-nav (`EvolucaoSubNav` + `layout.tsx`, módulos só movidos, não reescritos) com `permanentRedirect` nas rotas antigas; Registro virou FAB (`RegistroFab`) na Hoje; `/mais` ganhou Nutrição, Exames, Chat, Registro e Sair. 279 testes, `typecheck`/`lint`/`build` verdes; verificado no browser contra produção real (as 5 abas, sub-nav, redirect de `/corpo`, FAB abrindo `/registro`, dark mode). Branch `fase-7-etapa-2-navegacao`, não mergeada — depende do Pedro revisar e mergear. **Fase 7 como um todo ainda não pronta**: falta a Etapa 0.4 e, sobretudo, o critério 3 (uma semana de uso real gerando `habit.adherence.avg7d`), que só pode ser verificado depois do merge.
+
 ## Backlog pós-v1
 - Notificações push (recomendação do dia); exportação de relatórios em PDF; Google Keep via API; corridas com GPS/rotas; comparativos ano × ano; backup automatizado além do semanal.
 

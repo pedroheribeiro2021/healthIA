@@ -1,20 +1,21 @@
 import Link from "next/link";
+import { LogoutButton } from "@/components/LogoutButton";
 
 const SECTIONS = [
-  { href: "/sono", label: "Sono", hint: "Duração e comparativo semanal" },
-  { href: "/exercicios", label: "Exercícios", hint: "Carga de treino e ACWR" },
-  { href: "/corpo", label: "Corpo", hint: "Peso, gordura corporal e bioimpedância" },
-  { href: "/exames", label: "Exames", hint: "Histórico de marcadores laboratoriais" },
   { href: "/nutricao", label: "Nutrição", hint: "Receitas, macros e lista de compras" },
+  { href: "/exames", label: "Exames", hint: "Histórico de marcadores laboratoriais" },
+  { href: "/chat", label: "Chat", hint: "Perguntar à IA sobre seus dados" },
+  { href: "/registro", label: "Registro", hint: "Lançar peso, hidratação, refeição ou nota" },
 ] as const;
 
 export default function MaisPage() {
   return (
     <main className="flex flex-1 flex-col bg-neutral-50 pb-20 dark:bg-neutral-950">
-      <header className="border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
+      <header className="flex items-center justify-between border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
         <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
           Mais
         </h1>
+        <LogoutButton />
       </header>
       <ul className="flex flex-col gap-3 px-6 py-8">
         {SECTIONS.map((section) => (

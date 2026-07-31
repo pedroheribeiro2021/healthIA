@@ -407,3 +407,27 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 - Etapa 0.4 (import de bioimpedância real) continua bloqueada por um motivo diferente: a spec exige `POST /api/v1/imports/bioimpedance` autenticado como Pedro, não `INSERT` direto — e o acesso desta sessão é só ao banco via SQL (`supabase db query --linked`), sem sessão HTTP autenticada do app. Registrado como pendência do Pedro, não tentado.
 
 **Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md). Etapa 0.4 (import de bioimpedância) segue com o Pedro. Depois dela, Etapa 2 (navegação por rotina) fecha a Fase 7.
+
+---
+
+## 2026-07-31 (2) — Fase 7 Etapa 2: Navegação por rotina
+
+**Objetivo:** implementar a Etapa 2 de `docs/FASE-7-ROTINA.md` — reagrupar a navegação em 5 abas por rotina (Hoje/Plano/Evolução/Insights/Mais), em vez das 7 atuais por fonte de dado, seguindo o diagnóstico da Fase 7 ("5 das 9 telas escondidas atrás de Mais").
+
+**Realizado:**
+- Branch `fase-7-etapa-2-navegacao` criada a partir de `main` (que já tinha as Etapas 0 e 1 mergeadas).
+- **`/evolucao`**: `app/evolucao/layout.tsx` (novo) envolve as 4 telas com `EvolucaoSubNav.tsx` (sub-abas Corpo · Sono · Exercícios · Relatórios, `usePathname` pra destacar a ativa); `app/evolucao/page.tsx` redireciona pra `/evolucao/corpo` (hub sem conteúdo próprio, landing na primeira seção). As 4 páginas foram **movidas** via `git mv` de `app/{corpo,sono,exercicios,relatorios}/page.tsx` — nenhuma lógica de busca de dado reescrita, só o caminho do arquivo mudou.
+- **Redirects permanentes**: `app/{corpo,sono,exercicios}/page.tsx` viraram `permanentRedirect()` de uma linha pra `/evolucao/{seção}`; `app/relatorios/page.tsx` também redireciona, preservando `?type=weekly|monthly` de link salvo (lido via `searchParams`, repassado na URL de destino).
+- **`NavBar.tsx` reescrita**: 5 abas (Hoje/Plano/Evolução/Insights/Mais) com ícone SVG inline + rótulo cada uma (sem lib nova — o projeto não tinha ícones, decisão de manter zero dependência pra 5 desenhos simples). Detecção de aba ativa generalizada: `SUB_ROUTES` mapeia cada aba-hub (`/evolucao`, `/mais`) pra sua lista de sub-rotas, substituindo o `MAIS_TAB_ROUTES` ad-hoc de antes.
+- **Registro virou FAB**: `components/RegistroFab.tsx` (botão "+" circular, 56×56px — acima dos 44px mínimos do critério de pronto), fixo no canto inferior direito da Hoje, acima da `NavBar`. `/registro` continua existindo como rota (só não é mais aba).
+- **`/mais` atualizada**: ganhou Nutrição, Exames, Chat e Registro (perdeu Sono/Exercícios/Corpo/Exames antigos, que foram pra Evolução) + botão "Sair" no header (antes só existia nas telas Hoje e Registro).
+- 279 testes (nenhum novo — mudança é só de roteamento/composição, sem lógica nova testável em isolamento), `npm run typecheck`, `npm run lint`, `npm run build` verdes — build confirmou todas as rotas esperadas geradas (`/evolucao`, `/evolucao/{corpo,sono,exercicios,relatorios}`, `/corpo` etc. como redirect).
+- **Verificado no browser** (`npm run dev` local, sessão já ativa como `pedro@mail.com` contra o Supabase de produção, dark mode): as 5 abas navegam e destacam a aba certa, inclusive em sub-rotas (Evolução some ativa em `/evolucao/sono`, `/evolucao/exercicios`, `/evolucao/relatorios`; Mais fica ativa em `/registro`); sub-nav de Evolução troca de seção sem perder o destaque da aba pai; `/corpo` (rota antiga) redirecionou de fato pra `/evolucao/corpo`; FAB da Hoje abriu `/registro` corretamente. Dados reais renderizaram em todas as telas (sono com tendência estável, exercícios com treinos reais, relatórios com "dados insuficientes" — esperado, consistente com o sync parado desde 22/07).
+
+**Decisões:**
+- **`/evolucao` redireciona pra `/evolucao/corpo` em vez de mostrar um hub próprio** — como a sub-nav já lista as 4 seções, uma tela intermediária sem conteúdo seria um toque a mais sem ganho; a landing em Corpo (primeira da lista da spec) já conta como 1 toque a partir da NavBar, mantendo o critério "nenhuma tela a mais de dois toques".
+- **Ícones da `NavBar` são SVG inline no próprio componente**, não uma lib (`lucide-react` etc.) — o projeto não tinha nenhuma dependência de ícones antes; 5 desenhos simples (casa, prancheta, gráfico, lâmpada, reticências) não justificam uma dependência nova.
+- **`permanentRedirect` (308), não `redirect` (307)** — as rotas antigas não vão voltar a existir; sinalizar como permanente é o correto pra qualquer link salvo ou cache de navegador/PWA.
+- **Branch não mergeada nesta sessão** — segue o padrão das fases anteriores: fica pro Pedro revisar e decidir sobre o merge (dispara deploy). O critério 3 da Fase 7 (uma semana de uso real) só pode começar a ser observado depois do merge.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md). Pedro: revisar e mergear `fase-7-etapa-2-navegacao` → `main`. Depois disso, a Fase 7 só fecha de vez com a Etapa 0.4 (import de bioimpedância, bloqueada por sessão autenticada) e uma semana de uso real gerando `habit.adherence.avg7d`.

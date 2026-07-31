@@ -2,6 +2,7 @@
 
 ## Ação do Pedro
 
+- [ ] **Revisar e decidir sobre o merge de `fase-7-etapa-2-navegacao` → `main`** (dispara deploy) — Etapa 2 da Fase 7 (navegação por rotina: 5 abas, `/evolucao`, FAB de registro). Depois do merge, usar o app por uma semana normalmente é o que falta para fechar o critério 3 da Fase 7 (`habit.adherence.avg7d` com valor real).
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
 - [ ] **Obter `GEMINI_API_KEY`** em [Google AI Studio](https://aistudio.google.com/apikey) (free tier) e configurar `AI_PROVIDER=gemini` + `GEMINI_API_KEY` na Vercel (Settings → Environment Variables) — sem isso o chat (`/chat`) fica indisponível em produção (o resto do app funciona normalmente). Validar também se `GEMINI_MODEL` precisa ser sobrescrito (default no código: `gemini-2.5-flash`, ver `notas/ADR/ADR-003-ai-providers-via-fetch-rest.md`) — modelo do free tier pode ter mudado desde a implementação.
 - [ ] Opcional: configurar `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` na Vercel se quiser trocar de provider (`AI_PROVIDER=anthropic|openai`) — nenhum dos dois foi testado contra a API real (só com `fetch` mockado).
@@ -30,6 +31,15 @@ Diagnóstico feito com dado real de produção, especificação escrita em `docs
 - `habit_logs` é **mutável por dia** (upsert + delete), única exceção ao append-only do schema — adesão é intenção corrigível, não medição. Registrar em ADR-005.
 - Escopo da fase: hábitos + metas + navegação. **Planejamento alimentar e cadastro das receitas ficam fora** — pendência da Fase 5 segue aberta.
 - Navegação reagrupada **por rotina** (Hoje · Plano · Evolução · Insights · Mais), não por fonte de dado. Registro vira FAB, não aba.
+
+## Resolvido em 2026-07-31 — Fase 7 Etapa 2: Navegação por rotina
+
+- [x] **5 abas fixas** (Hoje · Plano · Evolução · Insights · Mais) substituem as 7 antigas (Hoje/Insights/Metas/Relatórios/Chat/Registro/Mais), reagrupadas por rotina, não por fonte de dado — `NavBar.tsx` reescrita com ícones inline (sem lib nova) e detecção de aba ativa generalizada por grupo de sub-rotas (`SUB_ROUTES`).
+- [x] **`/evolucao`**: hub que redireciona para `/evolucao/corpo`; `app/evolucao/layout.tsx` (com `EvolucaoSubNav`, sub-abas Corpo · Sono · Exercícios · Relatórios) envolve as 4 páginas, **movidas** (não reescritas) de `app/{corpo,sono,exercicios,relatorios}/` para `app/evolucao/{...}/page.tsx`. Rotas antigas viram `permanentRedirect()` — `/relatorios` preserva `?type=weekly|monthly`.
+- [x] **Registro virou FAB** (`components/RegistroFab.tsx`, botão "+" flutuante ≥44px) na Hoje, em vez de aba; `/registro` continua existindo como rota.
+- [x] **`/mais`** ganhou Nutrição, Exames, Chat, Registro e o botão Sair (antes só nas telas Hoje/Registro).
+- [x] 279 testes, `typecheck`/`lint`/`build` verdes. **Verificado no browser contra produção real** (dev local, logado como `pedro@mail.com`): as 5 abas navegam e destacam corretamente (inclusive em sub-rotas de Evolução e Mais), sub-nav de `/evolucao` troca de seção sem perder a aba "Evolução" ativa, `/corpo` redireciona para `/evolucao/corpo`, FAB abre `/registro` e destaca "Mais", dark mode ok.
+- [x] Branch `fase-7-etapa-2-navegacao` criada a partir de `main`, commitada. **Não mergeada** — depende do Pedro revisar e decidir sobre o merge (dispara deploy).
 
 ## Resolvido em 2026-07-31 — Fase 7 Etapa 0.3: limpeza de dado de teste
 

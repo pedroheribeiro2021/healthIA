@@ -1,4 +1,5 @@
 import { LogoutButton } from "@/components/LogoutButton";
+import { RegistroFab } from "@/components/RegistroFab";
 import { getMetricSeries } from "@/engines/analytics/queries";
 import { addDays, todayLocalDay } from "@/engines/analytics/period";
 import { getHabitWeek, getTodayHabitStates } from "@/engines/habits/habitService";
@@ -69,6 +70,7 @@ export default async function Home() {
         <OverviewCards summary={summary} />
         <RecoveryTrendChart series={recoverySeries} />
       </div>
+      <RegistroFab />
     </main>
   );
 }
