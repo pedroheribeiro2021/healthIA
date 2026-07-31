@@ -76,15 +76,25 @@ export function WatchVsScaleChart({
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
-          <XAxis dataKey="date" fontSize={12} tickMargin={8} />
-          <YAxis domain={["dataMin - 2", "dataMax + 2"]} fontSize={12} width={30} />
+          {/* Ticks e a série "Relógio" usam hex literal, não currentColor+dark: —
+              o Recharts renderiza eixo/legenda numa camada separada que não
+              herda className do componente, então a cor precisa já nascer
+              certa. #737373 (neutral-500) tem contraste suficiente nos dois
+              temas, sem precisar de variante escura. */}
+          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={{ fill: "#737373" }} />
+          <YAxis
+            domain={["dataMin - 2", "dataMax + 2"]}
+            fontSize={12}
+            width={30}
+            tick={{ fill: "#737373" }}
+          />
           <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, ""]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           <Line
             type="monotone"
             dataKey="watch"
             name="Relógio"
-            stroke="#a3a3a3"
+            stroke="#737373"
             strokeWidth={2}
             dot={{ r: 3 }}
             connectNulls

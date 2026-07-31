@@ -29,7 +29,13 @@ function Tile({
 
 // Server Component puro: recebe o daily_summary já pronto (Analytics
 // Engine já rodou) e só apresenta. Nenhum cálculo aqui (CLAUDE.md).
-export function OverviewCards({ summary }: { summary: DailySummary | null }) {
+export function OverviewCards({
+  summary,
+  recoveryHint,
+}: {
+  summary: DailySummary | null;
+  recoveryHint?: string;
+}) {
   if (!summary) {
     return (
       <div className="w-full max-w-md rounded-xl border border-dashed border-neutral-300 p-6 text-center text-sm text-neutral-500 dark:border-neutral-700">
@@ -48,6 +54,7 @@ export function OverviewCards({ summary }: { summary: DailySummary | null }) {
             ? `${Math.round(summary.recoveryScore)}`
             : "—"
         }
+        hint={summary.recoveryScore !== null ? recoveryHint : undefined}
       />
       <Tile label="Sono" value={formatDuration(summary.sleepDurationS)} />
       <Tile

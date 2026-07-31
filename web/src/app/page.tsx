@@ -1,10 +1,11 @@
 import { LogoutButton } from "@/components/LogoutButton";
 import { RegistroFab } from "@/components/RegistroFab";
 import { getMetricSeries } from "@/engines/analytics/queries";
-import { addDays, todayLocalDay } from "@/engines/analytics/period";
+import { addDays, localDayBounds, todayLocalDay } from "@/engines/analytics/period";
 import { getHabitWeek, getTodayHabitStates } from "@/engines/habits/habitService";
 import { AlertBanner } from "@/modules/insights/AlertBanner";
 import { OverviewCards } from "@/modules/dashboard/OverviewCards";
+import { recoveryHint } from "@/modules/dashboard/recoveryHint";
 import { RecoveryTrendChart } from "@/modules/dashboard/RecoveryTrendChart";
 import { CheckinCard } from "@/modules/rotina/CheckinCard";
 import { createSupabaseEventRepository } from "@/repositories/eventRepository";
@@ -28,19 +29,26 @@ export default async function Home() {
   const habitRepo = await createSupabaseHabitRepository();
   const eventRepo = await createSupabaseEventRepository();
   const today = todayLocalDay();
-  const [summary, { series: recoverySeries }, openRecommendations, todayStates, week] =
-    await Promise.all([
-      metricRepo.getLatestDailySummary(),
-      getMetricSeries(
-        metricRepo,
-        "recovery.score.daily",
-        addDays(today, -29),
-        today,
-      ),
-      recommendationRepo.listByStatus("open"),
-      getTodayHabitStates(habitRepo, eventRepo, today),
-      getHabitWeek(habitRepo, eventRepo, today),
-    ]);
+  const [
+    summary,
+    { series: recoverySeries },
+    todayRecoverySnapshots,
+    openRecommendations,
+    todayStates,
+    week,
+  ] = await Promise.all([
+    metricRepo.getLatestDailySummary(),
+    getMetricSeries(metricRepo, "recovery.score.daily", addDays(today, -29), today),
+    metricRepo.listMetricSnapshots({
+      metricId: "recovery.score.daily",
+      from: localDayBounds(today).start,
+      to: localDayBounds(today).end,
+    }),
+    recommendationRepo.listByStatus("open"),
+    getTodayHabitStates(habitRepo, eventRepo, today),
+    getHabitWeek(habitRepo, eventRepo, today),
+  ]);
+  const recoveryDetailHint = recoveryHint(todayRecoverySnapshots.at(-1)?.detail);
   const streakByHabitId = new Map(week.map((entry) => [entry.habit.id, entry.streak]));
   const checkinRows = todayStates.map((state) => ({
     ...state,
@@ -67,7 +75,7 @@ export default async function Home() {
         </p>
         <AlertBanner openCount={openRecommendations.length} />
         <CheckinCard initialStates={checkinRows} />
-        <OverviewCards summary={summary} />
+        <OverviewCards summary={summary} recoveryHint={recoveryDetailHint} />
         <RecoveryTrendChart series={recoverySeries} />
       </div>
       <RegistroFab />
