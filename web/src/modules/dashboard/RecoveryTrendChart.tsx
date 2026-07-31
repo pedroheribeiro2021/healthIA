@@ -40,8 +40,11 @@ export function RecoveryTrendChart({ series }: { series: TimeSeries }) {
             strokeDasharray="3 3"
             className="stroke-neutral-200 dark:stroke-neutral-800"
           />
-          <XAxis dataKey="date" fontSize={12} tickMargin={8} />
-          <YAxis domain={[0, 100]} fontSize={12} width={30} />
+          {/* Hex literal, não currentColor+dark: — o Recharts renderiza os
+              ticks numa camada separada que não herda className. #737373
+              (neutral-500) tem contraste suficiente nos dois temas. */}
+          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={{ fill: "#737373" }} />
+          <YAxis domain={[0, 100]} fontSize={12} width={30} tick={{ fill: "#737373" }} />
           <Tooltip formatter={(value) => [`${value}`, "Recovery"]} />
           <Line
             type="monotone"

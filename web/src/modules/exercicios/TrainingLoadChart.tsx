@@ -51,17 +51,22 @@ export function TrainingLoadChart({
             strokeDasharray="3 3"
             className="stroke-neutral-200 dark:stroke-neutral-800"
           />
-          <XAxis dataKey="date" fontSize={12} tickMargin={8} />
-          <YAxis yAxisId="load" fontSize={12} width={30} />
+          {/* Ticks e a barra de carga usam hex literal, não currentColor+dark:
+              — o Recharts renderiza eixo numa camada separada que não herda
+              className. #737373 (neutral-500) tem contraste suficiente nos
+              dois temas. */}
+          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={{ fill: "#737373" }} />
+          <YAxis yAxisId="load" fontSize={12} width={30} tick={{ fill: "#737373" }} />
           <YAxis
             yAxisId="acwr"
             orientation="right"
             domain={[0, 2]}
             fontSize={12}
             width={30}
+            tick={{ fill: "#737373" }}
           />
           <Tooltip />
-          <Bar yAxisId="load" dataKey="load" fill="#a3a3a3" radius={[2, 2, 0, 0]} />
+          <Bar yAxisId="load" dataKey="load" fill="#737373" radius={[2, 2, 0, 0]} />
           <Line
             yAxisId="acwr"
             type="monotone"
