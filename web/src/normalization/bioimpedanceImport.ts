@@ -28,7 +28,19 @@ export function normalizeBioimpedanceEntry(raw: RawRecord): NewHealthEvent[] {
       `payload inválido para ${raw.source}:${raw.recordType}: ${parsed.error.message}`,
     );
   }
-  const { occurredAt, kg, bodyFatPct, leanMassKg, waterPct, bmrKcal } = parsed.data;
+  const {
+    occurredAt,
+    kg,
+    bodyFatPct,
+    leanMassKg,
+    waterPct,
+    bmrKcal,
+    skeletalMuscleKg,
+    fatMassKg,
+    visceralFatLevel,
+    bmi,
+    estimated,
+  } = parsed.data;
 
   return [
     {
@@ -43,6 +55,11 @@ export function normalizeBioimpedanceEntry(raw: RawRecord): NewHealthEvent[] {
         leanMassKg: leanMassKg ?? null,
         waterPercentage: waterPct ?? null,
         bmrKcal: bmrKcal ?? null,
+        skeletalMuscleKg: skeletalMuscleKg ?? null,
+        fatMassKg: fatMassKg ?? null,
+        visceralFatLevel: visceralFatLevel ?? null,
+        bmi: bmi ?? null,
+        estimated: estimated ?? false,
       },
       source: raw.source,
       rawRecordId: raw.id,

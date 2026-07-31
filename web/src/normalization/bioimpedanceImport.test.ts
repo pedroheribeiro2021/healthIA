@@ -54,6 +54,11 @@ describe("normalize (registry) — fonte bioimpedance", () => {
       leanMassKg: 67.1,
       waterPercentage: null,
       bmrKcal: null,
+      skeletalMuscleKg: null,
+      fatMassKg: null,
+      visceralFatLevel: null,
+      bmi: null,
+      estimated: false,
     });
   });
 
@@ -69,6 +74,42 @@ describe("normalize (registry) — fonte bioimpedance", () => {
       leanMassKg: null,
       waterPercentage: null,
       bmrKcal: null,
+      skeletalMuscleKg: null,
+      fatMassKg: null,
+      visceralFatLevel: null,
+      bmi: null,
+      estimated: false,
+    });
+  });
+
+  it("normaliza os campos do laudo InBody (Fase 7 Etapa 0.4) e a flag 'estimated'", () => {
+    const raw = rawRecordFrom({
+      payload: {
+        occurredAt: "2026-07-23T08:00:00.000Z",
+        kg: 77.3,
+        bodyFatPct: 22.7,
+        leanMassKg: 59.8,
+        skeletalMuscleKg: 33.9,
+        fatMassKg: 17.5,
+        visceralFatLevel: 7,
+        bmi: 25.5,
+        bmrKcal: 1661,
+        estimated: false,
+      },
+    });
+
+    const [event] = normalize(raw);
+    expect(event.detail).toEqual({
+      origin: "clinical_bia",
+      bodyFatPercentage: 22.7,
+      leanMassKg: 59.8,
+      waterPercentage: null,
+      bmrKcal: 1661,
+      skeletalMuscleKg: 33.9,
+      fatMassKg: 17.5,
+      visceralFatLevel: 7,
+      bmi: 25.5,
+      estimated: false,
     });
   });
 
