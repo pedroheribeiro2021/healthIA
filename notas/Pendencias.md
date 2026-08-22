@@ -2,13 +2,13 @@
 
 ## Planejamento aberto em 2026-08-22 — leva de usabilidade (gráficos, hábitos, metas, insights)
 
-Pedro reportou o app "completamente inútil" no uso diário (ver `notas/Registro-de-Sessoes.md` da sessão de 2026-08-22 pro diagnóstico completo). Triagem: consertos rápidos já feitos na branch `fix-usabilidade-graficos-habitos-metas-insights` (5 commits, testados ao vivo contra produção, ainda não mergeada em `main`). Restam:
+Pedro reportou o app "completamente inútil" no uso diário (ver `notas/Registro-de-Sessoes.md` da sessão de 2026-08-22 pro diagnóstico completo). Todos os consertos identificados foram feitos, mergeados em `main` e estão em produção. Restam:
 
 - [x] **Navegação entre dias anteriores no bloco "Rotina de hoje" da home** — resolvido em 2026-08-22 (`?day=YYYY-MM-DD` na home + botões no `CheckinCard`, dia futuro bloqueado). Ver `notas/Registro-de-Sessoes.md`.
 - [x] **Importador de exame com preenchimento automático** — resolvido em 2026-08-22 (extração via IA a partir de foto do laudo, revisão obrigatória antes de salvar — ver ADR-006 e `notas/Registro-de-Sessoes.md`). PDF continua manual.
-- [ ] **Testar a extração de exame por IA com um laudo real** — só foi validado até a borda do provider (`GEMINI_API_KEY` não está no `.env.local` deste ambiente de dev, só na Vercel — Pedro confirmou que já configurou lá). Só dá pra validar de ponta a ponta depois do deploy de produção (item abaixo).
+- [x] **PR #20 mergeado em `main` e em produção** — confirmado via MCP da Vercel: deploy `dpl_CbQPNMkD24KshnT5HGXefAgPpiaM` (commit `6854f40`, merge do PR #20) com `target: production` e `state: READY`.
+- [ ] **Testar a extração de exame por IA com um laudo real em produção** — já dá pra testar agora que o deploy está no ar e `GEMINI_API_KEY` está configurada na Vercel; ninguém validou ainda com um laudo de verdade (a validação desta sessão foi só até a borda do provider, sem chamada real de IA).
 - [ ] **Validar que o sync automático do relógio voltou a funcionar** — ver item abaixo em "Ação do Pedro" (já existia antes desta sessão).
-- [x] **Branch `fix-usabilidade-graficos-habitos-metas-insights` publicada** — push feito, [PR #20](https://github.com/pedroheribeiro2021/healthIA/pull/20) aberto em 2026-08-22, aguardando revisão/merge do Pedro.
 
 ## Ação do Pedro
 
