@@ -11,7 +11,10 @@ export default async function RegistroPage() {
   } = await supabase.auth.getUser();
 
   const repo = await createSupabaseEventRepository();
-  const weightEvents = await repo.listHealthEvents({ eventType: "weight" });
+  const [weightEvents, bodyCompositionEvents] = await Promise.all([
+    repo.listHealthEvents({ eventType: "weight" }),
+    repo.listHealthEvents({ eventType: "body_composition" }),
+  ]);
 
   return (
     <main className="flex flex-1 flex-col bg-neutral-50 pb-20 dark:bg-neutral-950">
@@ -27,6 +30,13 @@ export default async function RegistroPage() {
         </p>
         <WeightChart
           events={weightEvents
+            .filter((event) => event.value !== null)
+            .slice(0, 60)
+            .map((event) => ({
+              startTime: event.startTime,
+              value: event.value as number,
+            }))}
+          bioimpedanceEvents={bodyCompositionEvents
             .filter((event) => event.value !== null)
             .slice(0, 60)
             .map((event) => ({
