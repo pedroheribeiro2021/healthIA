@@ -5,7 +5,8 @@
 Pedro reportou o app "completamente inútil" no uso diário (ver `notas/Registro-de-Sessoes.md` da sessão de 2026-08-22 pro diagnóstico completo). Triagem: consertos rápidos já feitos na branch `fix-usabilidade-graficos-habitos-metas-insights` (5 commits, testados ao vivo contra produção, ainda não mergeada em `main`). Restam:
 
 - [x] **Navegação entre dias anteriores no bloco "Rotina de hoje" da home** — resolvido em 2026-08-22 (`?day=YYYY-MM-DD` na home + botões no `CheckinCard`, dia futuro bloqueado). Ver `notas/Registro-de-Sessoes.md`.
-- [ ] **Importador de exame com preenchimento automático** — hoje `POST /api/v1/imports/lab` só aceita valores já estruturados em JSON; o upload de PDF existente só guarda o arquivo no Storage, não lê nada dele. Decisão em aberto: OCR local vs. mandar o laudo pra um provider de IA extrair os campos (ver princípio "IA nunca calcula indicador" — extração de texto não é cálculo de indicador, mas vale alinhar antes de implementar).
+- [x] **Importador de exame com preenchimento automático** — resolvido em 2026-08-22 (extração via IA a partir de foto do laudo, revisão obrigatória antes de salvar — ver ADR-006 e `notas/Registro-de-Sessoes.md`). PDF continua manual.
+- [ ] **Testar a extração de exame por IA com um laudo real** — só foi validado até a borda do provider (sem `GEMINI_API_KEY` configurada localmente); depende do item abaixo.
 - [ ] **Validar que o sync automático do relógio voltou a funcionar** — ver item abaixo em "Ação do Pedro" (já existia antes desta sessão).
 - [ ] **Decidir merge da branch `fix-usabilidade-graficos-habitos-metas-insights`** — PR ou merge direto em `main`.
 

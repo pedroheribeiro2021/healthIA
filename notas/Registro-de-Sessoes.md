@@ -22,10 +22,12 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 **Adicionado depois, ainda na mesma sessão** (`feat(web)` `c2ac0ea`): navegação entre dias anteriores no bloco "Rotina de hoje" da home — pedido que Pedro repetiu porque nunca tinha sido implementado. `app/page.tsx` aceita `?day=YYYY-MM-DD` (só afeta o check-in de hábitos, resto do dashboard segue ancorado em hoje; dia inválido/futuro cai pra hoje), `CheckinCard` ganhou botões ‹/› com "Hoje"/"Ontem"/`DD/MM`, próximo dia desabilitado ao chegar em hoje. `resolveDerivedHabit`/fallback manual já funcionavam por dia arbitrário (reusado de `WeekGrid`), não precisou de mudança ali. Testado ao vivo: navegação Hoje → Ontem → Hoje confirmada via URL e conteúdo, "Próximo dia" desabilita corretamente ao voltar pra hoje.
 
-**Pendências desta rodada** (Pedro escolheu "consertos rápidos primeiro" e adiou o resto):
-- [ ] Importador de exame com preenchimento automático (OCR/parse do laudo) — hoje só existe upload do PDF pro Storage (não lê nada dele) + formulário manual estruturado.
+**Adicionado depois, ainda na mesma sessão** (`feat(ai)` `d63c8ca`, ADR-006): importador de exame assistido por IA. Pedro confirmou explicitamente a abordagem (IA lê a foto do laudo, extrai os marcadores, Pedro confere/edita cada linha antes de importar — nunca grava sozinho). `AIProvider` ganhou `completeWithImage`, implementado nos 3 providers (REST, ADR-003); `engines/ai/examExtraction.ts` valida a resposta da IA com zod; `LabImportFromFile.tsx` novo em `/exames`, ao lado do formulário manual existente (que segue obrigatório pra PDF — a extração só aceita imagem). Reverte a nota antiga em `domain/labResult.ts` que dizia "sem parsing automático" — o racional completo, incluindo por que isso não fere "IA nunca calcula indicador", está no ADR. 286 testes (6 novos). Testado ao vivo até a borda do provider (sem `GEMINI_API_KEY` local, a rota responde 503 com fallback correto pro formulário manual) — a chamada real de IA depende do Pedro configurar a chave (já pendente antes desta sessão).
+
+**Pendências desta rodada** (Pedro escolheu "consertos rápidos primeiro" e foi liberando os itens maiores um a um):
 - [ ] Validar de verdade que o sync automático do relógio voltou a funcionar — a correção já foi commitada em 30/07 mas nunca validada com um build novo (ver `notas/Pendencias.md`, ação do Pedro).
-- [ ] Branch não commitada em `main` ainda — falta decidir se abre PR ou mergeia direto.
+- [ ] Testar a extração de exame por IA com um laudo real, depois que `GEMINI_API_KEY` estiver configurada.
+- [ ] Branch `fix-usabilidade-graficos-habitos-metas-insights` não commitada em `main` ainda — falta decidir se abre PR ou mergeia direto.
 
 **Próximos passos:** ver `notas/Pendencias.md`.
 
