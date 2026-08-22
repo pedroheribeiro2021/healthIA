@@ -5,7 +5,7 @@ import type {
   NewDailySummary,
   NewMetricSnapshot,
 } from "./analytics";
-import type { Goal, NewGoalInput } from "./goals";
+import type { Goal, NewGoalInput, UpdateGoalInput } from "./goals";
 import type { Habit, HabitLog, NewHabitLogInput } from "./habits";
 import type { EventType, HealthEvent, NewHealthEvent } from "./healthEvent";
 import type { Insight, NewInsight } from "./insights";
@@ -79,6 +79,7 @@ export interface GoalRepository {
   listActiveGoals(): Promise<Goal[]>;
   listGoals(): Promise<Goal[]>;
   createGoal(input: NewGoalInput): Promise<Goal>;
+  updateGoal(id: number, input: UpdateGoalInput): Promise<Goal>;
   deactivateGoal(id: number): Promise<Goal>;
 }
 

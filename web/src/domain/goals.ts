@@ -30,3 +30,13 @@ export const newGoalInputSchema = z.object({
   deadline: localDaySchema.nullable().optional(),
 });
 export type NewGoalInput = z.infer<typeof newGoalInputSchema>;
+
+// Edição de meta existente (Fase 7): metricId não entra — trocar a métrica
+// de uma meta já em andamento invalidaria o histórico dela; pra isso,
+// desativar e criar outra. Aqui é só ajuste de valor/direção/prazo.
+export const updateGoalInputSchema = z.object({
+  targetValue: z.number().optional(),
+  direction: goalDirectionSchema.optional(),
+  deadline: localDaySchema.nullable().optional(),
+});
+export type UpdateGoalInput = z.infer<typeof updateGoalInputSchema>;
