@@ -35,9 +35,9 @@ describe("resolveDerivedHabit", () => {
     expect(result).toEqual({ done: true, quantity: null });
   });
 
-  it("musculacao: false sem workout no dia", () => {
+  it("musculacao: null sem workout no dia (sem dado do relógio, não 'não fez')", () => {
     const result = resolveDerivedHabit("musculacao", DAY, PERIOD, [], null);
-    expect(result).toEqual({ done: false, quantity: null });
+    expect(result).toBeNull();
   });
 
   it("agua: soma hydration do dia e compara com a meta", () => {
@@ -55,9 +55,9 @@ describe("resolveDerivedHabit", () => {
     expect(result).toEqual({ done: false, quantity: 1.0 });
   });
 
-  it("agua: sem nenhum registro no dia retorna quantity null", () => {
+  it("agua: sem nenhum registro no dia retorna null (sem dado do relógio)", () => {
     const result = resolveDerivedHabit("agua", DAY, PERIOD, [], 3.0);
-    expect(result).toEqual({ done: false, quantity: null });
+    expect(result).toBeNull();
   });
 
   it("dormir_cedo: true quando a sessão principal começa antes das 23h (deitou na noite anterior)", () => {
@@ -86,9 +86,9 @@ describe("resolveDerivedHabit", () => {
     expect(result?.done).toBe(false);
   });
 
-  it("dormir_cedo: false sem sessão de sono atribuída ao dia", () => {
+  it("dormir_cedo: null sem sessão de sono atribuída ao dia (sem dado do relógio)", () => {
     const result = resolveDerivedHabit("dormir_cedo", DAY, PERIOD, [], null);
-    expect(result).toEqual({ done: false, quantity: null });
+    expect(result).toBeNull();
   });
 
   it("slug desconhecido retorna null", () => {

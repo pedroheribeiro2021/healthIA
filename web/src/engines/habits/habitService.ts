@@ -46,45 +46,26 @@ export async function getTodayHabitStates(
   ]);
 
   return habits.map((habit) => {
-    if (isDerived(habit)) {
-      const derived = resolveDerivedHabit(
-        habit.slug,
-        day,
-        period,
-        events,
-        habit.targetPerDay,
-      );
-      return {
-        habit,
-        done: derived?.done ?? false,
-        quantity: derived?.quantity ?? null,
-        source: derived ? "derived" : "none",
-      };
+    const derived = isDerived(habit)
+      ? resolveDerivedHabit(habit.slug, day, period, events, habit.targetPerDay)
+      : null;
+    if (derived) {
+      return { habit, done: derived.done, quantity: derived.quantity, source: "derived" as const };
     }
+    // Sem dado do relógio hoje (ou hábito não-derivado): habit_logs manda,
+    // inclusive pra hábito `derived` — fallback pro Pedro poder marcar na
+    // mão quando o sync ainda não trouxe o dado do dia (docs/FASE-7-ROTINA.md
+    // não previa isso, mas bloquear o toque enquanto o sync está fora do ar
+    // deixa o hábito preso pra sempre). Assim que o relógio sincronizar,
+    // `derived` volta a mandar e o log manual vira redundante, não conflito.
     const log = todayLogs.find((l) => l.habitId === habit.id);
     return {
       habit,
       done: log?.done ?? false,
       quantity: log?.quantity ?? null,
-      source: log ? "log" : "none",
+      source: log ? "log" : ("none" as const),
     };
   });
-}
-
-// Rejeita registrar hábito derived pela rota manual (409, docs/FASE-7-ROTINA.md
-// 1.6) — decisão de negócio, vive aqui, não na rota.
-export function assertLoggable(habit: Habit): void {
-  if (habit.sourceKind === "derived") {
-    throw new HabitNotLoggableError(habit);
-  }
-}
-
-export class HabitNotLoggableError extends Error {
-  constructor(public habit: Habit) {
-    super(
-      `hábito "${habit.slug}" é derivado — registre pelo caminho normal do dado de origem, não por habit_logs`,
-    );
-  }
 }
 
 const STREAK_LOOKBACK_DAYS = 30;
@@ -111,18 +92,21 @@ export async function getHabitWeek(
     const logsForHabit = logs.filter((l) => l.habitId === habit.id);
 
     const days: HabitWeekDay[] = days7.map((d) => {
-      if (derived) {
-        const result = resolveDerivedHabit(
-          habit.slug,
-          d,
-          localDayBounds(d),
-          events,
-          habit.targetPerDay,
-        );
-        return { day: d, done: result?.done ?? false, quantity: result?.quantity ?? null };
+      const result = derived
+        ? resolveDerivedHabit(habit.slug, d, localDayBounds(d), events, habit.targetPerDay)
+        : null;
+      if (result) {
+        return { day: d, done: result.done, quantity: result.quantity, source: "derived" as const };
       }
+      // Fallback manual — mesma lógica de getTodayHabitStates: sem dado do
+      // relógio nesse dia, habit_logs manda.
       const log = logsForHabit.find((l) => l.day === d);
-      return { day: d, done: log?.done ?? false, quantity: log?.quantity ?? null };
+      return {
+        day: d,
+        done: log?.done ?? false,
+        quantity: log?.quantity ?? null,
+        source: log ? "log" : ("none" as const),
+      };
     });
 
     // Streak de hábito derivado só enxerga os 7 dias exibidos aqui (não

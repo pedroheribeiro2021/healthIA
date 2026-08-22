@@ -31,7 +31,7 @@ export function WeekGrid({ entries: initialEntries }: { entries: HabitWeekEntry[
   }
 
   async function toggleDay(entry: HabitWeekEntry, day: HabitWeekDay) {
-    if (entry.habit.sourceKind === "derived" || day.day > today) return;
+    if (day.source === "derived" || day.day > today) return;
     const key = `${entry.habit.slug}:${day.day}`;
     setPendingKey(key);
     try {
@@ -102,8 +102,7 @@ export function WeekGrid({ entries: initialEntries }: { entries: HabitWeekEntry[
                 </span>
               </div>
               {entry.days.map((day) => {
-                const interactive =
-                  entry.habit.sourceKind !== "derived" && day.day <= today;
+                const interactive = day.source !== "derived" && day.day <= today;
                 const key = `${entry.habit.slug}:${day.day}`;
                 return (
                   <button

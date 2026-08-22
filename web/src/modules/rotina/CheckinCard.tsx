@@ -23,7 +23,7 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
   const adherencePct = eligible.length > 0 ? Math.round((doneCount / eligible.length) * 100) : null;
 
   async function toggleBoolean(row: HabitRow) {
-    if (row.habit.sourceKind === "derived") return;
+    if (row.source === "derived") return;
     setPendingSlug(row.habit.slug);
     try {
       if (row.done) {
@@ -52,7 +52,7 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
   }
 
   async function stepQuantity(row: HabitRow, delta: number) {
-    if (row.habit.sourceKind === "derived") return;
+    if (row.source === "derived") return;
     const next = Math.max(0, (row.quantity ?? 0) + delta);
     setPendingSlug(row.habit.slug);
     try {
@@ -116,17 +116,19 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
                 {row.habit.name}
               </span>
               <span className="text-xs text-neutral-400">
-                {row.habit.sourceKind === "derived"
-                  ? row.done
-                    ? `${SOURCE_LABEL.derived}${row.quantity ? ` · ${row.quantity} registrado` : ""}`
-                    : "sem dado do relógio ainda"
-                  : row.streak > 0
-                    ? `${row.streak} dias seguidos`
-                    : ""}
+                {row.source === "derived"
+                  ? `${SOURCE_LABEL.derived}${row.quantity ? ` · ${row.quantity} registrado` : ""}`
+                  : row.habit.sourceKind === "derived"
+                    ? row.source === "log"
+                      ? "marcado na mão · sem dado do relógio"
+                      : "sem dado do relógio — toque para marcar"
+                    : row.streak > 0
+                      ? `${row.streak} dias seguidos`
+                      : ""}
               </span>
             </div>
 
-            {row.habit.kind === "quantity" && row.habit.sourceKind !== "derived" ? (
+            {row.habit.kind === "quantity" && row.source !== "derived" ? (
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -151,7 +153,7 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
             ) : (
               <button
                 type="button"
-                disabled={row.habit.sourceKind === "derived" || pendingSlug === row.habit.slug}
+                disabled={row.source === "derived" || pendingSlug === row.habit.slug}
                 onClick={() => toggleBoolean(row)}
                 aria-pressed={row.done}
                 className={`h-11 w-11 shrink-0 rounded-full border text-lg disabled:opacity-60 ${
