@@ -81,6 +81,7 @@ export const habitWeekDaySchema = z.object({
   day: localDaySchema,
   done: z.boolean(),
   quantity: z.number().nullable(),
+  source: z.enum(["log", "derived", "none"]),
 });
 export type HabitWeekDay = z.infer<typeof habitWeekDaySchema>;
 

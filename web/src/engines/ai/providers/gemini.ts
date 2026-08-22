@@ -1,4 +1,4 @@
-import type { AIProvider, Message } from "../types";
+import type { AIProvider, ImageInput, Message } from "../types";
 import { parseSseLines } from "./sse";
 
 // Modelo do free tier validado pelo Pedro em Google AI Studio (Pendencias.md
@@ -50,6 +50,27 @@ export function createGeminiProvider(apiKey: string, model = GEMINI_DEFAULT_MODE
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: requestBody(system, messages),
+      });
+      if (!response.ok) throw await requestFailure(response);
+      return extractText(await response.json());
+    },
+
+    async completeWithImage(system, prompt, image: ImageInput) {
+      const response = await fetch(`${base}:generateContent?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType: image.mimeType, data: image.base64 } },
+              ],
+            },
+          ],
+        }),
       });
       if (!response.ok) throw await requestFailure(response);
       return extractText(await response.json());

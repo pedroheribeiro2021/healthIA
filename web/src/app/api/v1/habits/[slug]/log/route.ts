@@ -2,10 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { localDaySchema } from "@/domain/analytics";
 import { newHabitLogInputSchema } from "@/domain/habits";
-import {
-  assertLoggable,
-  HabitNotLoggableError,
-} from "@/engines/habits/habitService";
 import { createHabitRepositoryFromClient } from "@/repositories/habitRepository";
 import { authenticateRequest } from "@/repositories/supabase/auth";
 
@@ -18,8 +14,12 @@ async function findHabitBySlug(
 }
 
 // Upsert por dia (docs/FASE-7-ROTINA.md, 1.6) — habit_logs é mutável,
-// diferente do resto do schema (ADR-005). Rejeita hábito 'derived' com 409:
-// aquele dado vem de health_events, não de um toque na UI.
+// diferente do resto do schema (ADR-005). Hábito 'derived' também pode ser
+// logado aqui: é o fallback manual pra quando o relógio ainda não
+// sincronizou o dado do dia (ver habitService.getTodayHabitStates) — o log
+// só é exibido enquanto não houver health_events reais pro dia; assim que o
+// sync trouxer o dado real, ele volta a mandar e este log vira redundante,
+// não conflito.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
@@ -49,15 +49,6 @@ export async function POST(
   const habit = await findHabitBySlug(habitRepo, slug);
   if (!habit) {
     return NextResponse.json({ error: "hábito não encontrado" }, { status: 404 });
-  }
-
-  try {
-    assertLoggable(habit);
-  } catch (error) {
-    if (error instanceof HabitNotLoggableError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
-    }
-    throw error;
   }
 
   const log = await habitRepo.upsertLog(habit.id, parsed.data);
@@ -95,15 +86,6 @@ export async function DELETE(
   const habit = await findHabitBySlug(habitRepo, slug);
   if (!habit) {
     return NextResponse.json({ error: "hábito não encontrado" }, { status: 404 });
-  }
-
-  try {
-    assertLoggable(habit);
-  } catch (error) {
-    if (error instanceof HabitNotLoggableError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
-    }
-    throw error;
   }
 
   await habitRepo.deleteLog(habit.id, parsed.data.day);

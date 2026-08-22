@@ -4,6 +4,35 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 ---
 
+## 2026-08-22 — Leva de consertos de usabilidade (gráficos, hábitos, metas, insights)
+
+**Objetivo:** Pedro reportou o app "completamente inútil" no uso diário e listou 9 problemas concretos. Diagnóstico ponto a ponto no código antes de agir, depois triagem com o Pedro: consertos rápidos e bem delimitados nesta sessão, itens maiores (navegação por dias, import de exame com OCR, validação do sync do relógio) ficam pra próximas sessões.
+
+**Realizado (branch `fix-usabilidade-graficos-habitos-metas-insights`, 5 commits, ainda não mergeada):**
+
+- **Tooltip ilegível em todo gráfico do app** (`fix(web)` `25f95ac`): causa raiz encontrada — o tooltip padrão do Recharts herda `color` do `body` (que no modo escuro é quase branco) mas mantém fundo branco fixo, virando texto branco sobre fundo branco. `modules/charts/chartTheme.ts` novo, compartilhado pelos 6 componentes de gráfico.
+- **Gráfico de peso sem histórico de bioimpedância** (`feat(web)` `702da07`): `/registro` agora sobrepõe as medições de `body_composition` (bioimpedância) na mesma série do peso puro, com legenda.
+- **Hábito do integrador travado sem dado do relógio** (`feat(web)` `3002130`): `resolveDerivedHabit` agora retorna `null` quando não há nenhum health_event do dia (sem dado), distinto de `done=false` (relógio confirmou que não fez) — antes essa distinção não existia e o hábito ficava preso pra sempre com o sync parado. `habitService`/`analyticsService` caem pro log manual como fallback só nesse caso; assim que o relógio sincronizar, o dado derivado volta a mandar. Rota `POST/DELETE /api/v1/habits/{slug}/log` não rejeita mais hábito `derived` com 409.
+- **Meta só desativava, não editava** (`feat(web)` `11f0a1c`): `PATCH /api/v1/goals/{id}` (valor/direção/prazo — `metricId` fica de fora de propósito) + formulário inline no `GoalCard`.
+- **Lista de insights sem paginação** (`feat(web)` `d07c10c`): confirmado ao vivo em produção — 190 insights abertos nos últimos 30 dias renderizando tudo de uma vez. Agora mostra 5 + `<details>` "Mostrar mais" (sem estado de cliente), mesmo tratamento nas recomendações. Também reescreve o corpo das regras `acwr_high`/`hrv_drop_after_short_sleep` em linguagem simples (Pedro reportou "o que é ACWR?"); recomendações já abertas antes da mudança mantêm o texto antigo (snapshot gravado no momento em que dispararam).
+- **Verificado ao vivo** contra produção real via browser (login `pedro@mail.com`): POST em hábito derived sem dado (200, UI atualiza), PATCH de meta (200), tooltip com `background: white` + `color: rgb(23,23,23)` confirmado via computed style, overlay de bioimpedância visível no gráfico, colapso "Mostrar mais 185 insights"/"1 recomendação" funcionando. Dado de teste revertido depois (água voltou a 0).
+- 280 testes, `typecheck`/`lint`/`build` verdes.
+
+**Decisão tomada nesta sessão:** log manual em hábito `derived` deixou de ser proibido (era 409 fixo, decisão da Fase 7 original) — agora é fallback permitido só quando não há dado do relógio pro dia, com o dado derivado sempre tendo precedência quando existe. Não precisou de migration nem mudança de schema.
+
+**Adicionado depois, ainda na mesma sessão** (`feat(web)` `c2ac0ea`): navegação entre dias anteriores no bloco "Rotina de hoje" da home — pedido que Pedro repetiu porque nunca tinha sido implementado. `app/page.tsx` aceita `?day=YYYY-MM-DD` (só afeta o check-in de hábitos, resto do dashboard segue ancorado em hoje; dia inválido/futuro cai pra hoje), `CheckinCard` ganhou botões ‹/› com "Hoje"/"Ontem"/`DD/MM`, próximo dia desabilitado ao chegar em hoje. `resolveDerivedHabit`/fallback manual já funcionavam por dia arbitrário (reusado de `WeekGrid`), não precisou de mudança ali. Testado ao vivo: navegação Hoje → Ontem → Hoje confirmada via URL e conteúdo, "Próximo dia" desabilita corretamente ao voltar pra hoje.
+
+**Adicionado depois, ainda na mesma sessão** (`feat(ai)` `d63c8ca`, ADR-006): importador de exame assistido por IA. Pedro confirmou explicitamente a abordagem (IA lê a foto do laudo, extrai os marcadores, Pedro confere/edita cada linha antes de importar — nunca grava sozinho). `AIProvider` ganhou `completeWithImage`, implementado nos 3 providers (REST, ADR-003); `engines/ai/examExtraction.ts` valida a resposta da IA com zod; `LabImportFromFile.tsx` novo em `/exames`, ao lado do formulário manual existente (que segue obrigatório pra PDF — a extração só aceita imagem). Reverte a nota antiga em `domain/labResult.ts` que dizia "sem parsing automático" — o racional completo, incluindo por que isso não fere "IA nunca calcula indicador", está no ADR. 286 testes (6 novos). Testado ao vivo até a borda do provider (sem `GEMINI_API_KEY` local, a rota responde 503 com fallback correto pro formulário manual) — a chamada real de IA depende do Pedro configurar a chave (já pendente antes desta sessão).
+
+**Fechamento da sessão:** Pedro confirmou que `GEMINI_API_KEY` já estava configurada na Vercel há tempos (pendência antiga que constava como aberta em `Pendencias.md` — atualizada). Não achei confirmação de quando isso foi feito (nenhuma sessão anterior registra essa ação); efeito prático é que `/chat` e o importador de exame por IA devem funcionar em produção assim que o deploy rodar, mas isso ainda não foi validado com uso real. Push da branch feito e [PR #20](https://github.com/pedroheribeiro2021/healthIA/pull/20) aberto (10 commits).
+
+**Pendências desta rodada:**
+- [ ] Validar de verdade que o sync automático do relógio voltou a funcionar — a correção já foi commitada em 30/07 mas nunca validada com um build novo (ver `notas/Pendencias.md`, ação do Pedro).
+- [ ] Testar a extração de exame por IA com um laudo real em produção, depois do merge/deploy do PR #20.
+- [ ] Revisar e mergear o [PR #20](https://github.com/pedroheribeiro2021/healthIA/pull/20).
+
+**Próximos passos:** ver `notas/Pendencias.md`.
+
 ## 2026-07-19 — Fundação do projeto (Cowork)
 
 **Objetivo:** definir arquitetura/stack e deixar o repositório pronto para o desenvolvimento com Claude Code.

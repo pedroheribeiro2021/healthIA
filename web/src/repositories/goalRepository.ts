@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Goal, GoalDirection, NewGoalInput } from "@/domain/goals";
+import type { Goal, GoalDirection, NewGoalInput, UpdateGoalInput } from "@/domain/goals";
 import type { GoalRepository } from "@/domain/repositories";
 import type { Database } from "./supabase/databaseTypes";
 import { createSupabaseServerClient } from "./supabase/serverClient";
@@ -58,6 +58,23 @@ export function createGoalRepositoryFromClient(
           direction: input.direction,
           deadline: input.deadline ?? null,
         })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return toGoal(data);
+    },
+
+    async updateGoal(id: number, input: UpdateGoalInput): Promise<Goal> {
+      const patch: Database["healthia"]["Tables"]["goals"]["Update"] = {};
+      if (input.targetValue !== undefined) patch.target_value = input.targetValue;
+      if (input.direction !== undefined) patch.direction = input.direction;
+      if (input.deadline !== undefined) patch.deadline = input.deadline;
+
+      const { data, error } = await supabase
+        .from("goals")
+        .update(patch)
+        .eq("id", id)
         .select()
         .single();
 

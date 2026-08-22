@@ -164,7 +164,14 @@ export async function recomputeDay(
           derivedEvents,
           habit.targetPerDay,
         );
-        return { habit, done: derived?.done ?? false };
+        if (derived) return { habit, done: derived.done };
+        // Sem dado do relógio hoje: cai pro log manual, mesma regra de
+        // fallback usada em habitService.getTodayHabitStates — senão a
+        // adesão calculada aqui diverge do que o check-in mostra na UI.
+        const fallbackLog = weekHabitLogs.find(
+          (l) => l.habitId === habit.id && l.day === day,
+        );
+        return { habit, done: fallbackLog?.done ?? false };
       }
       const log = weekHabitLogs.find(
         (l) => l.habitId === habit.id && l.day === day,

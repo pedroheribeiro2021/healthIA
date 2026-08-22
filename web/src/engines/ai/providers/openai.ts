@@ -1,4 +1,4 @@
-import type { AIProvider, Message } from "../types";
+import type { AIProvider, ImageInput, Message } from "../types";
 import { parseSseLines } from "./sse";
 
 export const OPENAI_DEFAULT_MODEL = "gpt-4o-mini";
@@ -33,6 +33,30 @@ export function createOpenAIProvider(apiKey: string, model = OPENAI_DEFAULT_MODE
         method: "POST",
         headers: headers(apiKey),
         body: JSON.stringify({ model, messages: toChatMessages(system, messages) }),
+      });
+      if (!response.ok) throw await requestFailure(response);
+
+      const data = (await response.json()) as OpenAIResponse;
+      return data.choices?.[0]?.message?.content ?? "";
+    },
+
+    async completeWithImage(system, prompt, image: ImageInput) {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: headers(apiKey),
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: system },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.base64}` } },
+              ],
+            },
+          ],
+        }),
       });
       if (!response.ok) throw await requestFailure(response);
 

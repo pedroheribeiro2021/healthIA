@@ -14,8 +14,8 @@ export const acwrHigh: InsightRule = {
     return {
       ruleId: "acwr_high",
       severity: "alert",
-      title: "Risco de overtraining (ACWR alto)",
-      body: `Seu ACWR está em ${acwr.toFixed(2)}, acima do limite de ${ACWR_HIGH_THRESHOLD} — carga aguda bem maior que a crônica.`,
+      title: "Risco de overtraining (carga de treino subiu rápido demais)",
+      body: `ACWR é a razão entre sua carga de treino recente (7 dias) e a carga usual (últimas 4 semanas) — mede se você acelerou rápido demais. Está em ${acwr.toFixed(2)}, acima do limite seguro de ${ACWR_HIGH_THRESHOLD}.`,
       evidence: { acwr, threshold: ACWR_HIGH_THRESHOLD },
       periodStart: period.start,
       periodEnd: period.end,

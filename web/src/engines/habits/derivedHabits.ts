@@ -20,6 +20,12 @@ const BEFORE_23H_MINUTES_SINCE_NOON = 11 * 60;
 // errar (docs/FASE-7-ROTINA.md, 1.1). `events` deve já vir filtrado pelo
 // chamador para os health_events relevantes ao hábito (mesma convenção dos
 // calculators do Analytics Engine — v. engines/analytics/analyticsService.ts).
+// Retorna `null` quando não há nenhum health_event relevante pro dia — ou
+// seja, o integrador (relógio) simplesmente não sincronizou nada ainda,
+// diferente de ter sincronizado e confirmado "não fez". Essa distinção
+// importa: o chamador usa `null` como sinal de que pode cair de volta pra
+// um log manual (habit_logs) como fallback, sem mascarar dado real do
+// relógio quando ele existe.
 export function resolveDerivedHabit(
   slug: string,
   day: LocalDay,
@@ -29,10 +35,11 @@ export function resolveDerivedHabit(
 ): DerivedHabitResult | null {
   switch (slug) {
     case "musculacao": {
-      const done = events.some(
+      const hasWorkout = events.some(
         (e) => e.eventType === "workout" && isWithinPeriod(e.startTime, period),
       );
-      return { done, quantity: null };
+      if (!hasWorkout) return null;
+      return { done: true, quantity: null };
     }
 
     case "agua": {
@@ -42,14 +49,14 @@ export function resolveDerivedHabit(
             e.eventType === "hydration" && isWithinPeriod(e.startTime, period),
         )
         .reduce((sum, e) => sum + (e.value ?? 0), 0);
-      if (totalL === 0) return { done: false, quantity: null };
+      if (totalL === 0) return null;
       const done = targetPerDay !== null ? totalL >= targetPerDay : true;
       return { done, quantity: totalL };
     }
 
     case "dormir_cedo": {
       const found = findSleepSessionForDay(events, period);
-      if (!found) return { done: false, quantity: null };
+      if (!found) return null;
       const done =
         minutesSinceLocalNoon(found.session.startTime) <
         BEFORE_23H_MINUTES_SINCE_NOON;
