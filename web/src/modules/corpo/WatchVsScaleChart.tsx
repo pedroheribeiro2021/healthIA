@@ -10,6 +10,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  CHART_TICK_STYLE,
+  CHART_TOOLTIP_CONTENT_STYLE,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+} from "@/modules/charts/chartTheme";
 
 export type BodyFatPoint = { startTime: string; bodyFatPercentage: number };
 
@@ -76,19 +82,24 @@ export function WatchVsScaleChart({
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
-          {/* Ticks e a série "Relógio" usam hex literal, não currentColor+dark: —
-              o Recharts renderiza eixo/legenda numa camada separada que não
+          {/* A série "Relógio" usa hex literal, não currentColor+dark: — o
+              Recharts renderiza a legenda numa camada separada que não
               herda className do componente, então a cor precisa já nascer
               certa. #737373 (neutral-500) tem contraste suficiente nos dois
               temas, sem precisar de variante escura. */}
-          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={{ fill: "#737373" }} />
+          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={CHART_TICK_STYLE} />
           <YAxis
             domain={["dataMin - 2", "dataMax + 2"]}
             fontSize={12}
             width={30}
-            tick={{ fill: "#737373" }}
+            tick={CHART_TICK_STYLE}
           />
-          <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, ""]} />
+          <Tooltip
+            formatter={(value) => [`${Number(value).toFixed(1)}%`, ""]}
+            contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+            itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+          />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           <Line
             type="monotone"

@@ -11,6 +11,12 @@ import {
   YAxis,
 } from "recharts";
 import type { TimeSeries } from "@/domain/analytics";
+import {
+  CHART_TICK_STYLE,
+  CHART_TOOLTIP_CONTENT_STYLE,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+} from "@/modules/charts/chartTheme";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
@@ -51,21 +57,21 @@ export function TrainingLoadChart({
             strokeDasharray="3 3"
             className="stroke-neutral-200 dark:stroke-neutral-800"
           />
-          {/* Ticks e a barra de carga usam hex literal, não currentColor+dark:
-              — o Recharts renderiza eixo numa camada separada que não herda
-              className. #737373 (neutral-500) tem contraste suficiente nos
-              dois temas. */}
-          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={{ fill: "#737373" }} />
-          <YAxis yAxisId="load" fontSize={12} width={30} tick={{ fill: "#737373" }} />
+          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={CHART_TICK_STYLE} />
+          <YAxis yAxisId="load" fontSize={12} width={30} tick={CHART_TICK_STYLE} />
           <YAxis
             yAxisId="acwr"
             orientation="right"
             domain={[0, 2]}
             fontSize={12}
             width={30}
-            tick={{ fill: "#737373" }}
+            tick={CHART_TICK_STYLE}
           />
-          <Tooltip />
+          <Tooltip
+            contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+            itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+          />
           <Bar yAxisId="load" dataKey="load" fill="#737373" radius={[2, 2, 0, 0]} />
           <Line
             yAxisId="acwr"

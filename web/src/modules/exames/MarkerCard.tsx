@@ -9,6 +9,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  CHART_TICK_STYLE,
+  CHART_TOOLTIP_CONTENT_STYLE,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+} from "@/modules/charts/chartTheme";
 
 export type MarkerPoint = {
   startTime: string;
@@ -72,9 +78,18 @@ export function MarkerCard({
                 strokeDasharray="3 3"
                 className="stroke-neutral-200 dark:stroke-neutral-800"
               />
-              <XAxis dataKey="date" fontSize={10} tickMargin={4} />
-              <YAxis domain={["dataMin", "dataMax"]} fontSize={10} width={28} />
-              <Tooltip />
+              <XAxis dataKey="date" fontSize={10} tickMargin={4} tick={CHART_TICK_STYLE} />
+              <YAxis
+                domain={["dataMin", "dataMax"]}
+                fontSize={10}
+                width={28}
+                tick={CHART_TICK_STYLE}
+              />
+              <Tooltip
+                contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+              />
               <Line
                 type="monotone"
                 dataKey="value"

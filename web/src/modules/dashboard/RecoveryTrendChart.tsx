@@ -10,6 +10,12 @@ import {
   YAxis,
 } from "recharts";
 import type { TimeSeries } from "@/domain/analytics";
+import {
+  CHART_TICK_STYLE,
+  CHART_TOOLTIP_CONTENT_STYLE,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+} from "@/modules/charts/chartTheme";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
@@ -40,12 +46,14 @@ export function RecoveryTrendChart({ series }: { series: TimeSeries }) {
             strokeDasharray="3 3"
             className="stroke-neutral-200 dark:stroke-neutral-800"
           />
-          {/* Hex literal, não currentColor+dark: — o Recharts renderiza os
-              ticks numa camada separada que não herda className. #737373
-              (neutral-500) tem contraste suficiente nos dois temas. */}
-          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={{ fill: "#737373" }} />
-          <YAxis domain={[0, 100]} fontSize={12} width={30} tick={{ fill: "#737373" }} />
-          <Tooltip formatter={(value) => [`${value}`, "Recovery"]} />
+          <XAxis dataKey="date" fontSize={12} tickMargin={8} tick={CHART_TICK_STYLE} />
+          <YAxis domain={[0, 100]} fontSize={12} width={30} tick={CHART_TICK_STYLE} />
+          <Tooltip
+            formatter={(value) => [`${value}`, "Recovery"]}
+            contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+            itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+          />
           <Line
             type="monotone"
             dataKey="score"
