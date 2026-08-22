@@ -1,4 +1,5 @@
 import type { MarkerPoint } from "@/modules/exames/MarkerCard";
+import { LabImportFromFile } from "@/modules/exames/LabImportFromFile";
 import { LabResultForm } from "@/modules/exames/LabResultForm";
 import { MarkerCard } from "@/modules/exames/MarkerCard";
 import { createSupabaseEventRepository } from "@/repositories/eventRepository";
@@ -50,6 +51,7 @@ export default async function ExamesPage() {
         </div>
       )}
 
+      <LabImportFromFile />
       <LabResultForm />
     </main>
   );

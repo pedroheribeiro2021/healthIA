@@ -1,4 +1,4 @@
-import type { AIProvider, Message } from "../types";
+import type { AIProvider, ImageInput, Message } from "../types";
 import { parseSseLines } from "./sse";
 
 export const ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-5";
@@ -39,6 +39,37 @@ export function createAnthropicProvider(
         method: "POST",
         headers: headers(apiKey),
         body: JSON.stringify({ model, max_tokens: MAX_TOKENS, system, messages }),
+      });
+      if (!response.ok) throw await requestFailure(response);
+
+      const data = (await response.json()) as AnthropicResponse;
+      return (data.content ?? [])
+        .filter((block) => block.type === "text")
+        .map((block) => block.text ?? "")
+        .join("");
+    },
+
+    async completeWithImage(system, prompt, image: ImageInput) {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: headers(apiKey),
+        body: JSON.stringify({
+          model,
+          max_tokens: MAX_TOKENS,
+          system,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: { type: "base64", media_type: image.mimeType, data: image.base64 },
+                },
+                { type: "text", text: prompt },
+              ],
+            },
+          ],
+        }),
       });
       if (!response.ok) throw await requestFailure(response);
 
