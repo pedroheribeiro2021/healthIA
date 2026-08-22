@@ -20,8 +20,9 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 **Decisão tomada nesta sessão:** log manual em hábito `derived` deixou de ser proibido (era 409 fixo, decisão da Fase 7 original) — agora é fallback permitido só quando não há dado do relógio pro dia, com o dado derivado sempre tendo precedência quando existe. Não precisou de migration nem mudança de schema.
 
+**Adicionado depois, ainda na mesma sessão** (`feat(web)` `c2ac0ea`): navegação entre dias anteriores no bloco "Rotina de hoje" da home — pedido que Pedro repetiu porque nunca tinha sido implementado. `app/page.tsx` aceita `?day=YYYY-MM-DD` (só afeta o check-in de hábitos, resto do dashboard segue ancorado em hoje; dia inválido/futuro cai pra hoje), `CheckinCard` ganhou botões ‹/› com "Hoje"/"Ontem"/`DD/MM`, próximo dia desabilitado ao chegar em hoje. `resolveDerivedHabit`/fallback manual já funcionavam por dia arbitrário (reusado de `WeekGrid`), não precisou de mudança ali. Testado ao vivo: navegação Hoje → Ontem → Hoje confirmada via URL e conteúdo, "Próximo dia" desabilita corretamente ao voltar pra hoje.
+
 **Pendências desta rodada** (Pedro escolheu "consertos rápidos primeiro" e adiou o resto):
-- [ ] Navegação entre dias anteriores no bloco "Rotina de hoje" da home — já foi pedida antes e nunca foi implementada (home só busca o dia de hoje, sem parâmetro de data). `WeekGrid` em `/plano` já tem navegação de 7 dias, mas é uma UI diferente do card da home.
 - [ ] Importador de exame com preenchimento automático (OCR/parse do laudo) — hoje só existe upload do PDF pro Storage (não lê nada dele) + formulário manual estruturado.
 - [ ] Validar de verdade que o sync automático do relógio voltou a funcionar — a correção já foi commitada em 30/07 mas nunca validada com um build novo (ver `notas/Pendencias.md`, ação do Pedro).
 - [ ] Branch não commitada em `main` ainda — falta decidir se abre PR ou mergeia direto.
