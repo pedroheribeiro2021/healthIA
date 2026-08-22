@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { LocalDay } from "@/domain/analytics";
 import type { HabitTodayState } from "@/domain/habits";
-import { todayLocalDay } from "@/engines/analytics/period";
+import { addDays } from "@/engines/analytics/period";
 
 type HabitRow = HabitTodayState & { streak: number };
 
@@ -13,14 +14,42 @@ const SOURCE_LABEL: Record<HabitTodayState["source"], string> = {
   none: "",
 };
 
-export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
+function formatDayLabel(day: LocalDay, today: LocalDay): string {
+  if (day === today) return "Hoje";
+  if (day === addDays(today, -1)) return "Ontem";
+  const [, month, date] = day.split("-");
+  return `${date}/${month}`;
+}
+
+export function CheckinCard({
+  initialStates,
+  day,
+  today,
+}: {
+  initialStates: HabitRow[];
+  day: LocalDay;
+  today: LocalDay;
+}) {
   const router = useRouter();
   const [states, setStates] = useState(initialStates);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
 
+  // Reseta o estado local quando `initialStates` muda de referência — troca
+  // de dia navega a mesma rota com `?day=` diferente, o Server Component
+  // busca de novo e passa um array novo (mesmo padrão de WeekGrid.tsx).
+  const [prevInitialStates, setPrevInitialStates] = useState(initialStates);
+  if (initialStates !== prevInitialStates) {
+    setPrevInitialStates(initialStates);
+    setStates(initialStates);
+  }
+
   const eligible = states.filter((s) => s.habit.priority !== "bonus");
   const doneCount = eligible.filter((s) => s.done).length;
   const adherencePct = eligible.length > 0 ? Math.round((doneCount / eligible.length) * 100) : null;
+
+  function goToDay(delta: number) {
+    router.push(`/?day=${addDays(day, delta)}`);
+  }
 
   async function toggleBoolean(row: HabitRow) {
     if (row.source === "derived") return;
@@ -30,7 +59,7 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
         await fetch(`/api/v1/habits/${row.habit.slug}/log`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ day: todayLocalDay() }),
+          body: JSON.stringify({ day }),
         });
         setStates((prev) =>
           prev.map((s) => (s.habit.id === row.habit.id ? { ...s, done: false, quantity: null } : s)),
@@ -39,7 +68,7 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
         await fetch(`/api/v1/habits/${row.habit.slug}/log`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ day: todayLocalDay(), done: true }),
+          body: JSON.stringify({ day, done: true }),
         });
         setStates((prev) =>
           prev.map((s) => (s.habit.id === row.habit.id ? { ...s, done: true } : s)),
@@ -60,7 +89,7 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
         await fetch(`/api/v1/habits/${row.habit.slug}/log`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ day: todayLocalDay() }),
+          body: JSON.stringify({ day }),
         });
         setStates((prev) =>
           prev.map((s) => (s.habit.id === row.habit.id ? { ...s, done: false, quantity: null } : s)),
@@ -69,7 +98,7 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
         await fetch(`/api/v1/habits/${row.habit.slug}/log`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ day: todayLocalDay(), done: true, quantity: next }),
+          body: JSON.stringify({ day, done: true, quantity: next }),
         });
         setStates((prev) =>
           prev.map((s) => (s.habit.id === row.habit.id ? { ...s, done: true, quantity: next } : s)),
@@ -81,11 +110,34 @@ export function CheckinCard({ initialStates }: { initialStates: HabitRow[] }) {
     }
   }
 
+  const isToday = day === today;
+
   return (
     <section className="w-full max-w-md rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="mb-1 flex items-center justify-between">
+        <button
+          type="button"
+          aria-label="Dia anterior"
+          onClick={() => goToDay(-1)}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+        >
+          ‹
+        </button>
+        <span className="text-xs font-medium text-neutral-500">{formatDayLabel(day, today)}</span>
+        <button
+          type="button"
+          aria-label="Próximo dia"
+          disabled={isToday}
+          onClick={() => goToDay(1)}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-neutral-800"
+        >
+          ›
+        </button>
+      </div>
+
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          Rotina de hoje
+          Rotina{isToday ? " de hoje" : ""}
         </h2>
         {adherencePct !== null && (
           <span className="text-xs font-medium text-neutral-500">{adherencePct}%</span>

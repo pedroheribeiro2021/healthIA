@@ -1,5 +1,6 @@
 import { LogoutButton } from "@/components/LogoutButton";
 import { RegistroFab } from "@/components/RegistroFab";
+import { localDaySchema } from "@/domain/analytics";
 import { getMetricSeries } from "@/engines/analytics/queries";
 import { addDays, localDayBounds, todayLocalDay } from "@/engines/analytics/period";
 import { getHabitWeek, getTodayHabitStates } from "@/engines/habits/habitService";
@@ -18,7 +19,11 @@ import { createSupabaseServerClient } from "@/repositories/supabase/serverClient
 // responde "como estou hoje" sem tocar em nada. Server Component só busca
 // dados já calculados pelo Analytics Engine (cron/admin recompute) —
 // nenhum cálculo acontece neste arquivo.
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ day?: string }>;
+}) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -29,6 +34,15 @@ export default async function Home() {
   const habitRepo = await createSupabaseHabitRepository();
   const eventRepo = await createSupabaseEventRepository();
   const today = todayLocalDay();
+
+  // Navegação por dias no bloco "Rotina de hoje" (?day=YYYY-MM-DD) — só
+  // afeta o check-in de hábitos; o resto do dashboard (summary, recovery,
+  // recomendações) continua ancorado em hoje. Dia inválido ou no futuro cai
+  // de volta pra hoje.
+  const { day: dayParam } = await searchParams;
+  const parsedDay = dayParam ? localDaySchema.safeParse(dayParam) : null;
+  const selectedDay = parsedDay?.success && parsedDay.data <= today ? parsedDay.data : today;
+
   const [
     summary,
     { series: recoverySeries },
@@ -45,8 +59,8 @@ export default async function Home() {
       to: localDayBounds(today).end,
     }),
     recommendationRepo.listByStatus("open"),
-    getTodayHabitStates(habitRepo, eventRepo, today),
-    getHabitWeek(habitRepo, eventRepo, today),
+    getTodayHabitStates(habitRepo, eventRepo, selectedDay),
+    getHabitWeek(habitRepo, eventRepo, selectedDay),
   ]);
   const recoveryDetailHint = recoveryHint(todayRecoverySnapshots.at(-1)?.detail);
   const streakByHabitId = new Map(week.map((entry) => [entry.habit.id, entry.streak]));
@@ -74,7 +88,7 @@ export default async function Home() {
           )}
         </p>
         <AlertBanner openCount={openRecommendations.length} />
-        <CheckinCard initialStates={checkinRows} />
+        <CheckinCard initialStates={checkinRows} day={selectedDay} today={today} />
         <OverviewCards summary={summary} recoveryHint={recoveryDetailHint} />
         <RecoveryTrendChart series={recoverySeries} />
       </div>
