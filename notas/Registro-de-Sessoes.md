@@ -4,6 +4,30 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 ---
 
+## 2026-08-22 — Leva de consertos de usabilidade (gráficos, hábitos, metas, insights)
+
+**Objetivo:** Pedro reportou o app "completamente inútil" no uso diário e listou 9 problemas concretos. Diagnóstico ponto a ponto no código antes de agir, depois triagem com o Pedro: consertos rápidos e bem delimitados nesta sessão, itens maiores (navegação por dias, import de exame com OCR, validação do sync do relógio) ficam pra próximas sessões.
+
+**Realizado (branch `fix-usabilidade-graficos-habitos-metas-insights`, 5 commits, ainda não mergeada):**
+
+- **Tooltip ilegível em todo gráfico do app** (`fix(web)` `25f95ac`): causa raiz encontrada — o tooltip padrão do Recharts herda `color` do `body` (que no modo escuro é quase branco) mas mantém fundo branco fixo, virando texto branco sobre fundo branco. `modules/charts/chartTheme.ts` novo, compartilhado pelos 6 componentes de gráfico.
+- **Gráfico de peso sem histórico de bioimpedância** (`feat(web)` `702da07`): `/registro` agora sobrepõe as medições de `body_composition` (bioimpedância) na mesma série do peso puro, com legenda.
+- **Hábito do integrador travado sem dado do relógio** (`feat(web)` `3002130`): `resolveDerivedHabit` agora retorna `null` quando não há nenhum health_event do dia (sem dado), distinto de `done=false` (relógio confirmou que não fez) — antes essa distinção não existia e o hábito ficava preso pra sempre com o sync parado. `habitService`/`analyticsService` caem pro log manual como fallback só nesse caso; assim que o relógio sincronizar, o dado derivado volta a mandar. Rota `POST/DELETE /api/v1/habits/{slug}/log` não rejeita mais hábito `derived` com 409.
+- **Meta só desativava, não editava** (`feat(web)` `11f0a1c`): `PATCH /api/v1/goals/{id}` (valor/direção/prazo — `metricId` fica de fora de propósito) + formulário inline no `GoalCard`.
+- **Lista de insights sem paginação** (`feat(web)` `d07c10c`): confirmado ao vivo em produção — 190 insights abertos nos últimos 30 dias renderizando tudo de uma vez. Agora mostra 5 + `<details>` "Mostrar mais" (sem estado de cliente), mesmo tratamento nas recomendações. Também reescreve o corpo das regras `acwr_high`/`hrv_drop_after_short_sleep` em linguagem simples (Pedro reportou "o que é ACWR?"); recomendações já abertas antes da mudança mantêm o texto antigo (snapshot gravado no momento em que dispararam).
+- **Verificado ao vivo** contra produção real via browser (login `pedro@mail.com`): POST em hábito derived sem dado (200, UI atualiza), PATCH de meta (200), tooltip com `background: white` + `color: rgb(23,23,23)` confirmado via computed style, overlay de bioimpedância visível no gráfico, colapso "Mostrar mais 185 insights"/"1 recomendação" funcionando. Dado de teste revertido depois (água voltou a 0).
+- 280 testes, `typecheck`/`lint`/`build` verdes.
+
+**Decisão tomada nesta sessão:** log manual em hábito `derived` deixou de ser proibido (era 409 fixo, decisão da Fase 7 original) — agora é fallback permitido só quando não há dado do relógio pro dia, com o dado derivado sempre tendo precedência quando existe. Não precisou de migration nem mudança de schema.
+
+**Pendências desta rodada** (Pedro escolheu "consertos rápidos primeiro" e adiou o resto):
+- [ ] Navegação entre dias anteriores no bloco "Rotina de hoje" da home — já foi pedida antes e nunca foi implementada (home só busca o dia de hoje, sem parâmetro de data). `WeekGrid` em `/plano` já tem navegação de 7 dias, mas é uma UI diferente do card da home.
+- [ ] Importador de exame com preenchimento automático (OCR/parse do laudo) — hoje só existe upload do PDF pro Storage (não lê nada dele) + formulário manual estruturado.
+- [ ] Validar de verdade que o sync automático do relógio voltou a funcionar — a correção já foi commitada em 30/07 mas nunca validada com um build novo (ver `notas/Pendencias.md`, ação do Pedro).
+- [ ] Branch não commitada em `main` ainda — falta decidir se abre PR ou mergeia direto.
+
+**Próximos passos:** ver `notas/Pendencias.md`.
+
 ## 2026-07-19 — Fundação do projeto (Cowork)
 
 **Objetivo:** definir arquitetura/stack e deixar o repositório pronto para o desenvolvimento com Claude Code.

@@ -1,5 +1,14 @@
 # Pendências — HealthIA
 
+## Planejamento aberto em 2026-08-22 — leva de usabilidade (gráficos, hábitos, metas, insights)
+
+Pedro reportou o app "completamente inútil" no uso diário (ver `notas/Registro-de-Sessoes.md` da sessão de 2026-08-22 pro diagnóstico completo). Triagem: consertos rápidos já feitos na branch `fix-usabilidade-graficos-habitos-metas-insights` (5 commits, testados ao vivo contra produção, ainda não mergeada em `main`). Restam:
+
+- [ ] **Navegação entre dias anteriores no bloco "Rotina de hoje" da home** — já foi pedida antes e nunca foi implementada. `app/page.tsx` só busca o dia de hoje (`todayLocalDay()`), sem parâmetro de data nem UI de navegação. `WeekGrid` em `/plano` já resolve isso pra grade semanal, mas é uma UI diferente do card da home.
+- [ ] **Importador de exame com preenchimento automático** — hoje `POST /api/v1/imports/lab` só aceita valores já estruturados em JSON; o upload de PDF existente só guarda o arquivo no Storage, não lê nada dele. Decisão em aberto: OCR local vs. mandar o laudo pra um provider de IA extrair os campos (ver princípio "IA nunca calcula indicador" — extração de texto não é cálculo de indicador, mas vale alinhar antes de implementar).
+- [ ] **Validar que o sync automático do relógio voltou a funcionar** — ver item abaixo em "Ação do Pedro" (já existia antes desta sessão).
+- [ ] **Decidir merge da branch `fix-usabilidade-graficos-habitos-metas-insights`** — PR ou merge direto em `main`.
+
 ## Ação do Pedro
 
 - [ ] **Usar o app normalmente por uma semana** a partir de 31/07/2026 — é o que falta para o critério 3 da Fase 7 (`habit.adherence.avg7d` com valor real e ao menos uma regra de insight de hábito disparando ou verificada como "não dispara porque a adesão está boa"). Não é uma tarefa técnica, é o próprio uso do produto.
