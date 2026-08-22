@@ -6,15 +6,15 @@ Pedro reportou o app "completamente inútil" no uso diário (ver `notas/Registro
 
 - [x] **Navegação entre dias anteriores no bloco "Rotina de hoje" da home** — resolvido em 2026-08-22 (`?day=YYYY-MM-DD` na home + botões no `CheckinCard`, dia futuro bloqueado). Ver `notas/Registro-de-Sessoes.md`.
 - [x] **Importador de exame com preenchimento automático** — resolvido em 2026-08-22 (extração via IA a partir de foto do laudo, revisão obrigatória antes de salvar — ver ADR-006 e `notas/Registro-de-Sessoes.md`). PDF continua manual.
-- [ ] **Testar a extração de exame por IA com um laudo real** — só foi validado até a borda do provider (sem `GEMINI_API_KEY` configurada localmente); depende do item abaixo.
+- [ ] **Testar a extração de exame por IA com um laudo real** — só foi validado até a borda do provider (`GEMINI_API_KEY` não está no `.env.local` deste ambiente de dev, só na Vercel — Pedro confirmou que já configurou lá). Só dá pra validar de ponta a ponta depois do deploy de produção (item abaixo).
 - [ ] **Validar que o sync automático do relógio voltou a funcionar** — ver item abaixo em "Ação do Pedro" (já existia antes desta sessão).
-- [ ] **Decidir merge da branch `fix-usabilidade-graficos-habitos-metas-insights`** — PR ou merge direto em `main`.
+- [x] **Branch `fix-usabilidade-graficos-habitos-metas-insights` publicada** — push feito, [PR #20](https://github.com/pedroheribeiro2021/healthIA/pull/20) aberto em 2026-08-22, aguardando revisão/merge do Pedro.
 
 ## Ação do Pedro
 
 - [ ] **Usar o app normalmente por uma semana** a partir de 31/07/2026 — é o que falta para o critério 3 da Fase 7 (`habit.adherence.avg7d` com valor real e ao menos uma regra de insight de hábito disparando ou verificada como "não dispara porque a adesão está boa"). Não é uma tarefa técnica, é o próprio uso do produto.
 - [ ] **Trocar a senha de `pedro@mail.com`** (criada via SQL com senha temporária `123456` só para destravar o desenvolvimento) por uma senha real, agora que o login ponta a ponta em produção já foi validado e o sync-app também usa essa mesma conta.
-- [ ] **Obter `GEMINI_API_KEY`** em [Google AI Studio](https://aistudio.google.com/apikey) (free tier) e configurar `AI_PROVIDER=gemini` + `GEMINI_API_KEY` na Vercel (Settings → Environment Variables) — sem isso o chat (`/chat`) fica indisponível em produção (o resto do app funciona normalmente). Validar também se `GEMINI_MODEL` precisa ser sobrescrito (default no código: `gemini-2.5-flash`, ver `notas/ADR/ADR-003-ai-providers-via-fetch-rest.md`) — modelo do free tier pode ter mudado desde a implementação.
+- [x] **`GEMINI_API_KEY` configurada na Vercel** — Pedro confirmou em 2026-08-22 que já tinha feito isso antes ("faz tempo"). Não foi possível achar a data exata nem via `Pendencias.md`/registro de sessão anteriores nem via MCP da Vercel (não há tool pra listar nomes de env var, só valores — que não devem ser lidos aqui). Efeito prático: `/chat` e o importador de exame por IA (ADR-006) devem funcionar em produção assim que a branch `fix-usabilidade-graficos-habitos-metas-insights` for mergeada e o deploy rodar — ainda não confirmado com uso real (ver item abaixo). Segue em aberto validar se `GEMINI_MODEL` precisa ser sobrescrito (default no código: `gemini-2.5-flash`, ver ADR-003) — modelo do free tier pode ter mudado desde a implementação.
 - [ ] Opcional: configurar `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` na Vercel se quiser trocar de provider (`AI_PROVIDER=anthropic|openai`) — nenhum dos dois foi testado contra a API real (só com `fetch` mockado).
 
 ## Planejamento aberto em 2026-07-30 — Fase 7: Rotina, Hábitos e Navegação

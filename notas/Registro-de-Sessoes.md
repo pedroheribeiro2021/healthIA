@@ -24,10 +24,12 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 **Adicionado depois, ainda na mesma sessão** (`feat(ai)` `d63c8ca`, ADR-006): importador de exame assistido por IA. Pedro confirmou explicitamente a abordagem (IA lê a foto do laudo, extrai os marcadores, Pedro confere/edita cada linha antes de importar — nunca grava sozinho). `AIProvider` ganhou `completeWithImage`, implementado nos 3 providers (REST, ADR-003); `engines/ai/examExtraction.ts` valida a resposta da IA com zod; `LabImportFromFile.tsx` novo em `/exames`, ao lado do formulário manual existente (que segue obrigatório pra PDF — a extração só aceita imagem). Reverte a nota antiga em `domain/labResult.ts` que dizia "sem parsing automático" — o racional completo, incluindo por que isso não fere "IA nunca calcula indicador", está no ADR. 286 testes (6 novos). Testado ao vivo até a borda do provider (sem `GEMINI_API_KEY` local, a rota responde 503 com fallback correto pro formulário manual) — a chamada real de IA depende do Pedro configurar a chave (já pendente antes desta sessão).
 
-**Pendências desta rodada** (Pedro escolheu "consertos rápidos primeiro" e foi liberando os itens maiores um a um):
+**Fechamento da sessão:** Pedro confirmou que `GEMINI_API_KEY` já estava configurada na Vercel há tempos (pendência antiga que constava como aberta em `Pendencias.md` — atualizada). Não achei confirmação de quando isso foi feito (nenhuma sessão anterior registra essa ação); efeito prático é que `/chat` e o importador de exame por IA devem funcionar em produção assim que o deploy rodar, mas isso ainda não foi validado com uso real. Push da branch feito e [PR #20](https://github.com/pedroheribeiro2021/healthIA/pull/20) aberto (10 commits).
+
+**Pendências desta rodada:**
 - [ ] Validar de verdade que o sync automático do relógio voltou a funcionar — a correção já foi commitada em 30/07 mas nunca validada com um build novo (ver `notas/Pendencias.md`, ação do Pedro).
-- [ ] Testar a extração de exame por IA com um laudo real, depois que `GEMINI_API_KEY` estiver configurada.
-- [ ] Branch `fix-usabilidade-graficos-habitos-metas-insights` não commitada em `main` ainda — falta decidir se abre PR ou mergeia direto.
+- [ ] Testar a extração de exame por IA com um laudo real em produção, depois do merge/deploy do PR #20.
+- [ ] Revisar e mergear o [PR #20](https://github.com/pedroheribeiro2021/healthIA/pull/20).
 
 **Próximos passos:** ver `notas/Pendencias.md`.
 
