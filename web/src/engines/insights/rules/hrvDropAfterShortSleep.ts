@@ -48,7 +48,7 @@ export const hrvDropAfterShortSleep: InsightRule = {
       ruleId: "hrv_drop_after_short_sleep",
       severity: "attention",
       title: "Sono curto ontem pode ter afetado sua recuperação hoje",
-      body: `Você dormiu ${(yesterdaySleep / 3600).toFixed(1)}h ontem — abaixo de 6h — e seu HRV hoje (${hrvToday.toFixed(1)}ms) está abaixo da sua baseline de 60 dias (${hrvBaseline.toFixed(1)}ms). Essa relação já foi confirmada estatisticamente nos seus dados.`,
+      body: `Você dormiu ${(yesterdaySleep / 3600).toFixed(1)}h ontem — abaixo de 6h — e sua HRV hoje (variabilidade da frequência cardíaca, indicador de recuperação: ${hrvToday.toFixed(1)}ms) está abaixo da sua baseline de 60 dias (${hrvBaseline.toFixed(1)}ms). Essa relação já foi confirmada estatisticamente nos seus dados.`,
       evidence: {
         yesterdaySleepHours: yesterdaySleep / 3600,
         hrvToday,
