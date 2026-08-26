@@ -1,5 +1,14 @@
 # Pendências — HealthIA
 
+## Em andamento (2026-08-24/26) — sync-app: build `preview` crasha na abertura
+
+Ver `notas/Registro-de-Sessoes.md` (sessão 2026-08-24/26) para o histórico completo. Resumo do estado:
+
+- [x] Build correto pro teste identificado e gerado: `eas build --profile preview` (standalone, não dev client) — link `https://expo.dev/accounts/pedroheribeiro/projects/healthia-sync/builds/c9085def-ae9e-4055-a4ca-c090df5e427b`.
+- [x] `adb` instalado localmente via winget (`Google.PlatformTools`) pra poder capturar log de crash — precisa de shell novo pra pegar o PATH atualizado (reinício do PC resolve).
+- [ ] **Próximo passo exato**: celular conectado por USB com Depuração USB ativa → `adb devices` confirma conexão → `adb logcat` rodando **enquanto** o Pedro abre o app pra capturar o stack trace do crash (app abre e fecha na hora, sem erro nenhum visível em tela) → diagnosticar e corrigir a causa → gerar build novo → só então voltar ao teste original abaixo.
+- [ ] **Teste original, ainda bloqueado por isso**: instalar o build corrigido, deixar o celular sozinho (sem abrir) por algumas horas, conferir se `raw_records.received_at` avança sozinho.
+
 ## Planejamento aberto em 2026-08-22 — leva de usabilidade (gráficos, hábitos, metas, insights)
 
 Pedro reportou o app "completamente inútil" no uso diário (ver `notas/Registro-de-Sessoes.md` da sessão de 2026-08-22 pro diagnóstico completo). Todos os consertos identificados foram feitos, mergeados em `main` e estão em produção. Restam:

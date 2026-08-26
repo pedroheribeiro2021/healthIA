@@ -4,6 +4,27 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 ---
 
+## 2026-08-24/26 — Sync-app: build `preview` gerado, mas crasha na abertura (em diagnóstico, sessão interrompida)
+
+**Objetivo:** validar de vez a pendência do sync automático do relógio (ver `notas/Pendencias.md` — correção já commitada numa sessão anterior, nunca testada com build novo).
+
+**Realizado:**
+
+- **Identificado que o build de dev client não serve pro teste**: o link de build passado numa sessão anterior (22/08) era gerado com `eas build --profile development` (`developmentClient: true` no `eas.json`) — esse tipo de build não roda sozinho, precisa de `npx expo start` + conexão com o PC (tela "Development servers" no app). Inadequado pro teste real (celular sozinho, sem PC, por várias horas).
+- **Novo build gerado com o perfil certo** (`eas build --profile preview --platform android`, standalone, JS embutido no APK): link **`https://expo.dev/accounts/pedroheribeiro/projects/healthia-sync/builds/c9085def-ae9e-4055-a4ca-c090df5e427b`**. Primeira tentativa falhou (`eas: command not found` no Git Bash — `eas-cli` não está no PATH desse shell); resolvido rodando via `npx eas-cli build ...`. Upload de 299 MB demorou ~25 min (rede), build em si rápido.
+- **Pedro instalou o APK novo por cima do dev client antigo** (mesmo `package": "com.pedroribeiro.healthiasync"`) — **o app agora abre e fecha sozinho na hora (crash), sem mostrar nenhum erro em tela.** Ainda não diagnosticado — é a primeira vez que esse build roda em modo standalone (sem dev client), então pode ser algo que só aparece em release/Hermes e nunca apareceu rodando via Metro.
+- **`adb` (Android Platform-Tools) instalado nesta máquina** via `winget install --id Google.PlatformTools` — não existia antes (esse projeto propositalmente nunca precisou de Android SDK local, só build na nuvem via EAS). Instalado em `C:\Users\Paulo Ribeiro\AppData\Local\Microsoft\WinGet\Packages\Google.PlatformTools_Microsoft.Winget.Source_8wekyb3d8bbwe\platform-tools\adb.exe`. O instalador avisou que a variável de ambiente `PATH` foi atualizada mas exige um shell novo pra pegar o valor — **um reinício do computador resolve isso sozinho** (é justamente o que o Pedro ia fazer).
+
+**Pendente / próximo passo exato ao retomar:**
+
+1. Depois do reinício, abrir um terminal novo e confirmar que `adb version` já funciona direto (sem precisar do caminho completo).
+2. Conectar o celular no PC por **cabo USB**.
+3. No celular, ativar **Depuração USB** se ainda não estiver ativa: Configurações → Sobre o telefone → tocar 7x em "Número da compilação" (libera Opções do desenvolvedor) → voltar → Opções do desenvolvedor → ligar "Depuração USB". Autorizar o popup de confiança que aparece no celular ao conectar.
+4. Confirmar que o dispositivo aparece com `adb devices`.
+5. Rodar `adb logcat` (ou `adb logcat -b crash` / filtrar por `AndroidRuntime`) **enquanto** o Pedro abre o app pra reproduzir o crash na hora — isso deve trazer o stack trace real do erro, que hoje não aparece em lugar nenhum (nem na tela, nem nos logs de build do EAS, que só cobrem build-time).
+6. Com o stack trace em mãos, identificar a causa (suspeita inicial: algo que só se comporta diferente em release/Hermes vs. dev client — ex. import por efeito colateral em `index.ts`, algum módulo nativo não inicializando igual fora do dev client) e corrigir.
+7. Só depois disso, retomar o teste original: instalar o build corrigido, deixar o celular sozinho por horas, e conferir se `raw_records.received_at` avança sozinho.
+
 ## 2026-08-22 — Leva de consertos de usabilidade (gráficos, hábitos, metas, insights)
 
 **Objetivo:** Pedro reportou o app "completamente inútil" no uso diário e listou 9 problemas concretos. Diagnóstico ponto a ponto no código antes de agir, depois triagem com o Pedro: consertos rápidos e bem delimitados nesta sessão, itens maiores (navegação por dias, import de exame com OCR, validação do sync do relógio) ficam pra próximas sessões.
