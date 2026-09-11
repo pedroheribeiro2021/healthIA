@@ -1,21 +1,22 @@
 # Pendências — HealthIA
 
-## Em andamento (2026-09-11) — Item 1c de CORRECOES-F1.md: migration das metas seedadas
+## Resolvido em 2026-09-11 — Item 1c de CORRECOES-F1.md: migration das metas seedadas
 
-Bloqueado no checkpoint que o próprio `CORRECOES-F1.md` pede ("me liste antes de mexer") — ver
-`notas/Registro-de-Sessoes.md` (sessão 2026-09-11) para o racional completo.
-
-- [x] Metas seedadas pela migration `20260730140100_healthia_009_seed_habits_goals.sql` listadas:
-  `body.weight.avg7d` (73.5, decrease), `body.fatpct.avg7d` (17.5, decrease),
-  `habit.adherence.avg7d` (85, increase), `training.sessions.7d` (4, increase).
-- [x] Pedro escolheu o caminho "SELECT de verificação primeiro" (mesmo padrão do ADR-004), em vez de
-  um `DELETE` por `metric_id` às cegas — risco real: essas linhas não têm id fixo, e
-  `goals.target_value`/`active` são editáveis desde 22/08 (`PATCH /api/v1/goals/[id]`), então um filtro
-  só por `metric_id` poderia apagar uma meta que o Pedro já editou depois do seed, não só a original.
-- [ ] **Próximo passo**: rodar (Pedro, ou uma sessão com acesso ao Supabase) um
-  `select id, metric_id, target_value, direction, active, created_at from healthia.goals where metric_id in ('body.weight.avg7d','body.fatpct.avg7d','habit.adherence.avg7d','training.sessions.7d') order by created_at;`
-  e confirmar quais linhas ainda batem com o seed original (mesmo `target_value`/`created_at` da
-  migration 009) — só essas entram no `DELETE` final, por `id` explícito, numa migration nova.
+- [x] SELECT de verificação rodado contra produção (projeto `rachaconta`, via MCP do Supabase) antes
+  de qualquer DELETE. Achado real: `healthia.goals.id=1` (meta de peso 75kg da Fase 6, já desativada
+  em 22/07/2026) tem o mesmo `metric_id` (`body.weight.avg7d`) de uma das 4 linhas seedadas pela
+  migration 009 — um `DELETE` por `metric_id` teria apagado ela também, sem relação com o seed.
+- [x] Migration `20260911130000_healthia_010_remove_seeded_goals.sql` criada, filtrando pelo
+  `created_at` de lote do `INSERT` da migration 009 (idêntico nas 4 linhas seedadas,
+  `2026-07-30 18:08:15.130471+00`) em vez de `metric_id` ou id gerado — evita tanto o falso positivo
+  do `id=1` quanto o hardcode de id de identity numa migration de dados.
+- [x] Aplicada em produção com autorização explícita do Pedro (`mcp__claude_ai_Supabase__apply_migration`,
+  bloqueada uma vez pelo classificador de auto mode como "Production Deploy", liberada depois de
+  perguntar). Confirmado por SELECT: só `id=1` (a meta antiga da Fase 6) permanece em `healthia.goals`
+  — as 4 metas do seed foram removidas.
+- **Efeito prático**: `healthia.goals` está sem nenhuma meta ativa agora. `/plano` mostra "Nenhuma meta
+  cadastrada ainda." até o Pedro criar uma nova pelo formulário (regra nova: seed cria hábito, nunca
+  meta).
 
 ## Em andamento (2026-08-24/26) — sync-app: build `preview` crasha na abertura
 
