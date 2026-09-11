@@ -201,6 +201,38 @@ function steps(startTime: string, count: number): HealthEvent {
   };
 }
 
+function meal(startTime: string, kcal: number, proteinG: number): HealthEvent {
+  return {
+    id: 6,
+    eventType: "meal",
+    startTime,
+    endTime: null,
+    value: kcal,
+    unit: "kcal",
+    detail: { mealType: "other", description: "teste", proteinG, carbsG: null, fatG: null },
+    source: "manual",
+    rawRecordId: null,
+    supersededBy: null,
+    createdAt: startTime,
+  };
+}
+
+function hydration(startTime: string, liters: number): HealthEvent {
+  return {
+    id: 7,
+    eventType: "hydration",
+    startTime,
+    endTime: null,
+    value: liters,
+    unit: "l",
+    detail: null,
+    source: "manual",
+    rawRecordId: null,
+    supersededBy: null,
+    createdAt: startTime,
+  };
+}
+
 describe("recomputeDay", () => {
   it("calcula um dia com sono, treino, peso e passos completos", async () => {
     const events = [
@@ -242,6 +274,26 @@ describe("recomputeDay", () => {
     expect(summary.workouts).toBe(0);
     expect(summary.trainingLoad).toBe(0);
     expect(summary.recoveryScore).toBeNull();
+    expect(summary.kcalIn).toBeNull();
+    expect(summary.proteinG).toBeNull();
+    expect(summary.waterL).toBeNull();
+  });
+
+  it("soma kcal, proteína e água a partir de refeições e hidratação do dia", async () => {
+    const events = [
+      meal("2026-07-20T12:00:00.000Z", 400, 20),
+      meal("2026-07-20T19:00:00.000Z", 600, 40),
+      hydration("2026-07-20T10:00:00.000Z", 0.25),
+      hydration("2026-07-20T14:00:00.000Z", 0.5),
+    ];
+    const eventRepo = createFakeEventRepository(events);
+    const metricRepo = createFakeMetricRepository();
+
+    const summary = await recomputeDay(eventRepo, metricRepo, createFakeHabitRepository(), "2026-07-20");
+
+    expect(summary.kcalIn).toBe(1000);
+    expect(summary.proteinG).toBe(60);
+    expect(summary.waterL).toBeCloseTo(0.75, 5);
   });
 
   it("é idempotente — chamar duas vezes não duplica snapshots nem summary", async () => {

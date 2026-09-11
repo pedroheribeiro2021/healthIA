@@ -25,6 +25,11 @@ import {
   computeLeanMassDaily,
 } from "./calculators/bodyComposition";
 import { computeHrvRmssdDaily } from "./calculators/hrv";
+import {
+  computeKcalInDaily,
+  computeProteinDaily,
+  computeWaterDaily,
+} from "./calculators/nutrition";
 import { computeRecoveryScoreDaily } from "./calculators/recoveryScore";
 import { computeRestingHrDaily } from "./calculators/restingHr";
 import {
@@ -81,6 +86,7 @@ export async function recomputeDay(
     stepsEvents,
     bodyCompositionEvents,
     hydrationEvents,
+    mealEvents,
     activeHabits,
     weekHabitLogs,
   ] = await Promise.all([
@@ -124,6 +130,11 @@ export async function recomputeDay(
       from: period.start,
       to: period.end,
     }),
+    eventRepo.listHealthEvents({
+      eventType: "meal",
+      from: period.start,
+      to: period.end,
+    }),
     habitRepo.listActiveHabits(),
     habitRepo.listLogs({ from: isoWeekStart, to: day }),
   ]);
@@ -148,6 +159,9 @@ export async function recomputeDay(
   });
   const bodyFatPctResult = computeBodyFatPctDaily(bodyCompositionEvents, period);
   const leanMassResult = computeLeanMassDaily(bodyCompositionEvents, period);
+  const kcalInResult = computeKcalInDaily(mealEvents, period);
+  const proteinResult = computeProteinDaily(mealEvents, period);
+  const waterResult = computeWaterDaily(hydrationEvents, period);
 
   // Adesão do dia (Fase 7, docs/FASE-7-ROTINA.md 1.3): resolve cada hábito
   // ativo (log manual OU derivado de health_events já buscados acima),
@@ -191,6 +205,9 @@ export async function recomputeDay(
     bodyFatPctResult,
     leanMassResult,
     habitAdherenceResult,
+    kcalInResult,
+    proteinResult,
+    waterResult,
   ]);
 
   // 2) Rollups — precisam do histórico diário já persistido, incluindo o
@@ -282,9 +299,9 @@ export async function recomputeDay(
     steps: stepsEvents.length > 0 ? Math.round(stepsTotal) : null,
     workouts: workoutsToday,
     trainingLoad: trainingLoadResult.value,
-    kcalIn: null,
-    proteinG: null,
-    waterL: null,
+    kcalIn: kcalInResult.value,
+    proteinG: proteinResult.value,
+    waterL: waterResult.value,
     weightKg: weightResult.value,
     recoveryScore: recoveryResult.value,
     habitAdherencePct: habitAdherenceResult.value,
