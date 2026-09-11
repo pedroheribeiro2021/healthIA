@@ -41,6 +41,7 @@ export function QuickEntryForm() {
   const [description, setDescription] = useState("");
   const [mealType, setMealType] = useState<MealType>("other");
   const [kcal, setKcal] = useState("");
+  const [proteinG, setProteinG] = useState("");
   const [text, setText] = useState("");
 
   function resetFields() {
@@ -49,6 +50,7 @@ export function QuickEntryForm() {
     setDescription("");
     setMealType("other");
     setKcal("");
+    setProteinG("");
     setText("");
   }
 
@@ -70,6 +72,7 @@ export function QuickEntryForm() {
                 description,
                 mealType,
                 ...(kcal ? { kcal: Number(kcal) } : {}),
+                ...(proteinG ? { proteinG: Number(proteinG) } : {}),
               }
             : { type, occurredAt, text };
 
@@ -204,6 +207,21 @@ export function QuickEntryForm() {
               max="10000"
               value={kcal}
               onChange={(e) => setKcal(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="proteinG" className={labelClass}>
+              Proteína (g, opcional)
+            </label>
+            <input
+              id="proteinG"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              max="1000"
+              value={proteinG}
+              onChange={(e) => setProteinG(e.target.value)}
               className={inputClass}
             />
           </div>
