@@ -80,6 +80,18 @@ export function createInsightRepositoryFromClient(
       if (error) throw error;
       return data.map(toInsight);
     },
+
+    async dismissInsight(id): Promise<Insight> {
+      const { data, error } = await supabase
+        .from("insights")
+        .update({ dismissed: true })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return toInsight(data);
+    },
   };
 }
 

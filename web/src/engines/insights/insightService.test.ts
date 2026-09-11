@@ -134,6 +134,12 @@ function createFakeInsightRepository(): InsightRepository & { inserted: Insight[
         (i) => !i.dismissed && i.createdAt >= params.from && i.createdAt <= params.to,
       );
     },
+    async dismissInsight(id) {
+      const row = inserted.find((i) => i.id === id);
+      if (!row) throw new Error("insight não encontrado");
+      row.dismissed = true;
+      return row;
+    },
   };
 }
 
