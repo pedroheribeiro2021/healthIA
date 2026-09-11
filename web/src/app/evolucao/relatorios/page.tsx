@@ -28,7 +28,7 @@ export default async function RelatoriosPage({
 
       <div className="flex w-full max-w-md gap-2">
         <Link
-          href="/relatorios?type=weekly"
+          href="/evolucao/relatorios?type=weekly"
           className={`rounded-md px-3 py-1.5 text-sm font-medium ${
             kind === "weekly"
               ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
@@ -38,7 +38,7 @@ export default async function RelatoriosPage({
           Semanal
         </Link>
         <Link
-          href="/relatorios?type=monthly"
+          href="/evolucao/relatorios?type=monthly"
           className={`rounded-md px-3 py-1.5 text-sm font-medium ${
             kind === "monthly"
               ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
