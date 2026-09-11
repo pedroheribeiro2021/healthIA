@@ -98,6 +98,7 @@ export interface InsightRepository {
     periodEnd: string;
   }): Promise<Insight | null>;
   listActive(params: { from: string; to: string }): Promise<Insight[]>;
+  dismissInsight(id: number): Promise<Insight>;
 }
 
 /**

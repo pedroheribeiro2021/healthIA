@@ -10,6 +10,7 @@ import { todayLocalDay } from "@/engines/analytics/period";
 import { listGoalsWithProgress } from "@/engines/goals/goalService";
 import { getHabitWeek } from "@/engines/habits/habitService";
 import { GoalList } from "@/modules/metas/GoalList";
+import { NewGoalForm } from "@/modules/metas/NewGoalForm";
 import { WeekGrid } from "@/modules/rotina/WeekGrid";
 import { createSupabaseEventRepository } from "@/repositories/eventRepository";
 import { createSupabaseGoalRepository } from "@/repositories/goalRepository";
@@ -30,6 +31,7 @@ export default async function PlanoPage() {
     getHabitWeek(habitRepo, eventRepo, today),
   ]);
   const activeGoals = goals.filter((g) => g.goal.active);
+  const inactiveGoals = goals.filter((g) => !g.goal.active);
 
   return (
     <main className="flex flex-1 flex-col items-center gap-8 bg-neutral-50 px-6 py-8 pb-20 dark:bg-neutral-950">
@@ -41,6 +43,15 @@ export default async function PlanoPage() {
         <h2 className="text-sm font-medium text-neutral-500">Metas</h2>
         <GoalList goals={activeGoals} />
       </section>
+
+      <NewGoalForm />
+
+      {inactiveGoals.length > 0 && (
+        <section className="flex w-full max-w-md flex-col gap-3">
+          <h2 className="text-sm font-medium text-neutral-500">Metas desativadas</h2>
+          <GoalList goals={inactiveGoals} />
+        </section>
+      )}
 
       <section className="flex w-full max-w-md flex-col gap-3">
         <h2 className="text-sm font-medium text-neutral-500">Semana</h2>

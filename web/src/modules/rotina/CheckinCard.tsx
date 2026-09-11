@@ -21,6 +21,18 @@ function formatDayLabel(day: LocalDay, today: LocalDay): string {
   return `${date}/${month}`;
 }
 
+// Água é medição (litros), não intenção — por isso vira health_event real
+// (POST /api/v1/events/manual) em vez de habit_logs.quantity, unificando
+// com o caminho já existente em QuickEntryForm (/registro). Formatação em
+// pt-BR com unidade sempre explícita (auditoria F0, seção 3: o stepper
+// antigo não mostrava unidade nenhuma).
+function formatLiters(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 export function CheckinCard({
   initialStates,
   day,
@@ -110,6 +122,40 @@ export function CheckinCard({
     }
   }
 
+  // Hábito derivado + quantidade (hoje só "água"): grava um health_event
+  // hydration real via o mesmo endpoint de QuickEntryForm, em vez de
+  // habit_logs — único caminho de água no app agora (auditoria F0, item 1a).
+  // Só disponível no dia de hoje: health_events carregam start_time real
+  // (agora), não faz sentido "adicionar água agora" num dia passado.
+  async function addWater(row: HabitRow, liters: number) {
+    setPendingSlug(row.habit.slug);
+    try {
+      const response = await fetch("/api/v1/events/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "hydration",
+          occurredAt: new Date().toISOString(),
+          liters,
+        }),
+      });
+      if (response.ok) {
+        setStates((prev) =>
+          prev.map((s) => {
+            if (s.habit.id !== row.habit.id) return s;
+            const quantity = (s.quantity ?? 0) + liters;
+            const done =
+              s.habit.targetPerDay !== null ? quantity >= s.habit.targetPerDay : true;
+            return { ...s, done, quantity, source: "derived" as const };
+          }),
+        );
+      }
+      router.refresh();
+    } finally {
+      setPendingSlug(null);
+    }
+  }
+
   const isToday = day === today;
 
   return (
@@ -168,19 +214,50 @@ export function CheckinCard({
                 {row.habit.name}
               </span>
               <span className="text-xs text-neutral-400">
-                {row.source === "derived"
-                  ? `${SOURCE_LABEL.derived}${row.quantity ? ` · ${row.quantity} registrado` : ""}`
-                  : row.habit.sourceKind === "derived"
-                    ? row.source === "log"
-                      ? "marcado na mão · sem dado do relógio"
-                      : "sem dado do relógio — toque para marcar"
-                    : row.streak > 0
-                      ? `${row.streak} dias seguidos`
-                      : ""}
+                {row.habit.kind === "quantity" && row.habit.sourceKind === "derived"
+                  ? "" // valor e meta já aparecem ao lado, com unidade explícita
+                  : row.source === "derived"
+                    ? `${SOURCE_LABEL.derived}${row.quantity ? ` · ${row.quantity} registrado` : ""}`
+                    : row.habit.sourceKind === "derived"
+                      ? row.source === "log"
+                        ? "marcado na mão · sem dado do relógio"
+                        : "sem dado do relógio — toque para marcar"
+                      : row.streak > 0
+                        ? `${row.streak} dias seguidos`
+                        : ""}
               </span>
             </div>
 
-            {row.habit.kind === "quantity" && row.source !== "derived" ? (
+            {row.habit.kind === "quantity" && row.habit.sourceKind === "derived" ? (
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                  {formatLiters(row.quantity ?? 0)} {row.habit.unit ?? ""}
+                  {row.habit.targetPerDay !== null
+                    ? ` de ${formatLiters(row.habit.targetPerDay)} ${row.habit.unit ?? ""}`
+                    : ""}
+                </span>
+                {isToday && (
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      disabled={pendingSlug === row.habit.slug}
+                      onClick={() => addWater(row, 0.25)}
+                      className="rounded-full border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300"
+                    >
+                      +250ml
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pendingSlug === row.habit.slug}
+                      onClick={() => addWater(row, 0.5)}
+                      className="rounded-full border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-700 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300"
+                    >
+                      +500ml
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : row.habit.kind === "quantity" ? (
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -190,8 +267,8 @@ export function CheckinCard({
                 >
                   −
                 </button>
-                <span className="w-6 text-center text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                  {row.quantity ?? 0}
+                <span className="w-10 text-center text-xs font-medium text-neutral-900 dark:text-neutral-100">
+                  {row.quantity ?? 0} {row.habit.unit ?? ""}
                 </span>
                 <button
                   type="button"

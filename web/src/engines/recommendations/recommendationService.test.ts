@@ -40,6 +40,9 @@ function createFakeInsightRepository(insights: Insight[]): InsightRepository {
     async listActive() {
       return insights;
     },
+    async dismissInsight() {
+      throw new Error("não usado neste teste");
+    },
   };
 }
 

@@ -4,6 +4,59 @@ Atualizado ao fim de cada sessão de desenvolvimento (convenção do vault Claud
 
 ---
 
+## 2026-09-11 — Auditoria F0 + Item 1 de CORRECOES-F1.md (Faxina)
+
+**Objetivo:** auditoria somente-leitura do repositório (`AUDITORIA-F0.md`, prompt 1) e, na sequência,
+executar o item 1 ("Faxina") de `CORRECOES-F1.md` — as correções de menor risco identificadas na
+auditoria.
+
+**Realizado:**
+- **Auditoria**: `notas/auditoria/INVENTARIO.md` — mapa completo de workspaces, rotas, tabelas,
+  caminhos de escrita/leitura reais, telas com dado enganoso e dívida técnica. Achado mais importante:
+  `daily_summary.kcal_in`/`.protein_g`/`.water_l` gravados como `null` incondicionalmente
+  (`analyticsService.ts:285-287`) apesar de existirem eventos reais de `meal`/`hydration` — o domínio de
+  nutrição documentado em `docs/ENGINES.md` nunca foi implementado no Analytics Engine.
+- **Branch `fix/faxina-f1`**, 6 commits:
+  - `fix(web)` `242a211` — água no check-in (`CheckinCard.tsx`) trocou o stepper de ±1 litro sem
+    unidade por botões +250ml/+500ml com unidade e meta explícitas; passou a gravar `health_event`
+    real via `POST /api/v1/events/manual` em vez de `habit_logs.quantity` — unifica com o caminho que
+    `QuickEntryForm` (`/registro`) já usava, que antes não se comunicava com o check-in.
+  - `feat(web)` `6d5982f` — `healthia.insights.dismissed` nunca tinha caminho de escrita
+    (~190 insights acumulados, achado da auditoria); `POST /api/v1/insights/[id]/dismiss` (espelha
+    `recommendations/[id]/done`) + botão "Dispensar" em cada card de `/insights`.
+  - `refactor(web)` `70ab16e` — `/metas` era rota órfã (sem link em `NavBar`/`/mais`) mas tinha
+    formulário de criação e lista de desativadas que `/plano` (a tela oficial) não tinha; movido pra
+    `/plano`, `/metas` removida.
+  - `fix(web)` `c024bf2` — toggle Semanal/Mensal de `/evolucao/relatorios` linkava pra `/relatorios`
+    (rota antiga, hoje um `permanentRedirect`); aponta direto pra `/evolucao/relatorios?type=...`.
+  - `chore(sync-app)` `26dce88` — removida `expo-health-connect`, dependência nunca importada em
+    código (só `react-native-health-connect` é usado); `package-lock.json` regenerado via `npm install`.
+  - `chore` `eabb583` — `dashboard/` (resíduo não versionado do scaffold v1, só `dist/`+`node_modules/`)
+    apagado do disco e adicionado ao `.gitignore`.
+- 286 testes (56 arquivos, todos verdes — os 2 arquivos que na auditoria tinham estourado timeout de
+  worker do Vitest passaram normalmente nesta execução, confirmando que foi hiccup do ambiente, não
+  teste quebrado), `npm run typecheck`/`npm run lint` limpos em `web/` e `sync-app/`.
+
+**Decisões:**
+- **Água como medição, não intenção**: diferente de `habit_logs` (mutável por dia, ADR-005), litros de
+  água bebidos são um fato que já aconteceu — por isso passam a gravar `health_events` (append-only),
+  igual a qualquer outra medição do app. Consequência aceita: os botões de água só aparecem no dia de
+  hoje (não dá pra "adicionar água agora" retroativamente a um dia passado pela UI rápida do check-in;
+  correção de um lançamento errado seguiria o caminho manual de `/registro` com timestamp explícito).
+- **Item 1c (migration removendo as 4 metas semeadas pela migration 009) não executado nesta sessão** —
+  pausado no checkpoint que o próprio `CORRECOES-F1.md` pede ("me liste antes de mexer"). Risco real
+  identificado: as linhas do seed não têm id fixo, e `goals.target_value`/`active` são editáveis desde
+  22/08 (`PATCH /api/v1/goals/[id]`) — um `DELETE` por `metric_id` às cegas poderia apagar uma meta que
+  o Pedro já editou, não só o seed original (mesmo risco que o ADR-004 documentou pra dado de teste).
+  Pedro escolheu o caminho "SELECT de verificação primeiro" — ver `Pendencias.md`.
+- Itens 2-6 de `CORRECOES-F1.md` (domínio de nutrição, import de PDF de bioimpedância, design system,
+  mercado por voz, crash do sync-app) não foram iniciados nesta sessão — ficam para sessões seguintes,
+  na ordem recomendada pelo próprio documento.
+
+**Pendências / próximos passos:** ver [Pendencias.md](Pendencias.md).
+
+---
+
 ## 2026-08-24/26 — Sync-app: build `preview` gerado, mas crasha na abertura (em diagnóstico, sessão interrompida)
 
 **Objetivo:** validar de vez a pendência do sync automático do relógio (ver `notas/Pendencias.md` — correção já commitada numa sessão anterior, nunca testada com build novo).

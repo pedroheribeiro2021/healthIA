@@ -35,3 +35,8 @@ desktop.ini
 
 # Claude Code local
 .claude/
+
+# Residuo nao versionado do scaffold Vite da v1 (server Python + dashboard
+# React), arquivada na branch legacy-local e removida de main (a0b7d24).
+# Nao faz parte da arquitetura atual (ver CLAUDE.md) — nunca deve voltar.
+/dashboard/
