@@ -117,6 +117,21 @@ export const METRIC_CATALOG: readonly MetricCatalogEntry[] = [
     description: "Adesão aos hábitos, média dos últimos 7 dias",
     requiredEventTypes: [],
   },
+  {
+    id: "nutrition.kcal.daily",
+    description: "Calorias consumidas no dia (soma dos eventos meal)",
+    requiredEventTypes: ["meal"],
+  },
+  {
+    id: "nutrition.protein.daily",
+    description: "Proteína consumida no dia, g (soma dos eventos meal)",
+    requiredEventTypes: ["meal"],
+  },
+  {
+    id: "nutrition.water.daily",
+    description: "Água consumida no dia, l (soma dos eventos hydration)",
+    requiredEventTypes: ["hydration"],
+  },
 ] as const;
 
 export type MetricId = (typeof METRIC_CATALOG)[number]["id"];
