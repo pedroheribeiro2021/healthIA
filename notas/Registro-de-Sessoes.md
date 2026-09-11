@@ -16,7 +16,7 @@ auditoria.
   `daily_summary.kcal_in`/`.protein_g`/`.water_l` gravados como `null` incondicionalmente
   (`analyticsService.ts:285-287`) apesar de existirem eventos reais de `meal`/`hydration` — o domínio de
   nutrição documentado em `docs/ENGINES.md` nunca foi implementado no Analytics Engine.
-- **Branch `fix/faxina-f1`**, 6 commits:
+- **Branch `fix/faxina-f1`**, 7 commits + PR:
   - `fix(web)` `242a211` — água no check-in (`CheckinCard.tsx`) trocou o stepper de ±1 litro sem
     unidade por botões +250ml/+500ml com unidade e meta explícitas; passou a gravar `health_event`
     real via `POST /api/v1/events/manual` em vez de `habit_logs.quantity` — unifica com o caminho que
@@ -33,6 +33,9 @@ auditoria.
     código (só `react-native-health-connect` é usado); `package-lock.json` regenerado via `npm install`.
   - `chore` `eabb583` — `dashboard/` (resíduo não versionado do scaffold v1, só `dist/`+`node_modules/`)
     apagado do disco e adicionado ao `.gitignore`.
+  - `feat(web)` `ce5822c` — migration 010, item 1c (ver bloco de decisões abaixo).
+  - `main` sincronizado com `origin/main` (havia um commit local de sessão anterior nunca enviado) e
+    [PR #21](https://github.com/pedroheribeiro2021/healthIA/pull/21) aberto contra `main`.
 - 286 testes (56 arquivos, todos verdes — os 2 arquivos que na auditoria tinham estourado timeout de
   worker do Vitest passaram normalmente nesta execução, confirmando que foi hiccup do ambiente, não
   teste quebrado), `npm run typecheck`/`npm run lint` limpos em `web/` e `sync-app/`.
@@ -43,12 +46,19 @@ auditoria.
   igual a qualquer outra medição do app. Consequência aceita: os botões de água só aparecem no dia de
   hoje (não dá pra "adicionar água agora" retroativamente a um dia passado pela UI rápida do check-in;
   correção de um lançamento errado seguiria o caminho manual de `/registro` com timestamp explícito).
-- **Item 1c (migration removendo as 4 metas semeadas pela migration 009) não executado nesta sessão** —
-  pausado no checkpoint que o próprio `CORRECOES-F1.md` pede ("me liste antes de mexer"). Risco real
-  identificado: as linhas do seed não têm id fixo, e `goals.target_value`/`active` são editáveis desde
-  22/08 (`PATCH /api/v1/goals/[id]`) — um `DELETE` por `metric_id` às cegas poderia apagar uma meta que
-  o Pedro já editou, não só o seed original (mesmo risco que o ADR-004 documentou pra dado de teste).
-  Pedro escolheu o caminho "SELECT de verificação primeiro" — ver `Pendencias.md`.
+- **Item 1c (migration removendo as 4 metas semeadas pela migration 009) concluído na mesma sessão**,
+  depois de pausar no checkpoint que o próprio `CORRECOES-F1.md` pede ("me liste antes de mexer") — ver
+  detalhe completo em `Pendencias.md`. Resumo: SELECT de verificação (via MCP do Supabase) confirmou um
+  risco real que só apareceu com dado de produção — `healthia.goals.id=1` (meta de peso da Fase 6, já
+  desativada) compartilha `metric_id` com uma das linhas seedadas, então um `DELETE` por `metric_id`
+  teria apagado ela também. A migration 010 filtra pelo `created_at` de lote do `INSERT` da migration
+  009 (idêntico nas 4 linhas), não por `metric_id` nem por id gerado. Aplicação em produção foi
+  bloqueada uma vez pelo classificador de auto mode ("Production Deploy") e liberada depois de eu
+  perguntar e o Pedro autorizar explicitamente. `healthia.goals` ficou sem meta ativa — próxima meta é
+  o Pedro quem cria.
+- **Registrado em memória** (`~/.claude/projects/.../memory/feedback_abrir_pr_proativamente.md`): o
+  Pedro pediu que, daqui pra frente, eu abra o PR sozinho sempre que terminar uma branch, sem esperar
+  ele pedir — não inclui merge automático, que continua exigindo confirmação explícita dele.
 - Itens 2-6 de `CORRECOES-F1.md` (domínio de nutrição, import de PDF de bioimpedância, design system,
   mercado por voz, crash do sync-app) não foram iniciados nesta sessão — ficam para sessões seguintes,
   na ordem recomendada pelo próprio documento.
